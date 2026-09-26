@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#151a17">
+  <title>OUTPOST 07 — Tactical field</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+  <canvas id="game" aria-label="Bãi tập chiến thuật 3D"></canvas>
+  <div class="grain"></div>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">07</div><div><div class="brand-title">OUTPOST / FIELD OPS</div><div class="brand-sub">TACTICAL SIMULATION</div></div></div>
+    <div class="top-meta"><span class="live">TRAINING LIVE</span><span>BUILD 0.1.07</span><span id="clock">00:00</span></div>
+  </header>
+  <div class="map-label"><span class="map-index">A.</span><div><div class="map-title">Khu dân cư<br>ngoại vi</div><div class="map-caption">SECTOR 07 · VIETNAM</div></div></div>
+  <div class="coordinates"><span>ĐỊA HÌNH</span> &nbsp; ĐÔ THỊ / NGOẠI Ô<br><span>THỜI TIẾT</span> &nbsp; NẮNG NHẸ</div>
+  <div class="crosshair"><i></i></div>
+  <footer class="bottom">
+    <div class="operator"><div class="portrait">01</div><div><div class="operator-name">GHOST / ALPHA</div><div class="operator-class">RECON · CẤP 04</div><div class="vitals"><span>HP <b>100</b></span><span>ARM <b>075</b></span></div></div></div>
+    <div class="controls"><span class="control"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> DI CHUYỂN</span><span class="control"><kbd>SHIFT</kbd> CHẠY</span><span class="control"><kbd>DRAG</kbd> XOAY GÓC NHÌN</span><span class="control"><kbd>ESC</kbd> THẢ CHUỘT</span></div>
+    <div class="status"><strong>▰ &nbsp; TÌNH TRẠNG: SẴN SÀNG</strong>PHẠM VI HUẤN LUYỆN: ĐANG HOẠT ĐỘNG</div>
+  </footer>
+  <section class="intro" id="intro">
+    <div class="intro-panel">
+      <div class="intro-kicker">OUTPOST 07 &nbsp; / &nbsp; BẢN THỬ NGHIỆM</div>
+      <h1>VÀO KHU VỰC<br>HUẤN LUYỆN</h1>
+      <p>Bãi tập ngoại ô. Hai công trình, một khoảng sân bê tông và một nhiệm vụ: khảo sát địa hình.</p>
+      <p class="mobile-note">Thiết bị cảm ứng: kéo trên màn hình để xoay góc nhìn.</p>
+      <button class="enter" id="enter">BẮT ĐẦU TUẦN TRA &nbsp; ↗</button>
+      <div class="intro-hint">WASD DI CHUYỂN &nbsp; · &nbsp; KÉO CHUỘT ĐỂ NHÌN QUANH</div>
+    </div>
+  </section>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
