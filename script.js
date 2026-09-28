@@ -144,18 +144,104 @@ cube(viewModel, mats.uniform, .43, -.49, -.48, .22, .24, .62, false).rotation.z 
 cube(viewModel, mats.uniform, -.32, -.52, -.43, .22, .23, .62, false).rotation.z = .35;
 cube(viewModel, mats.vest, .34, -.34, -.83, .2, .16, .22, false);
 cube(viewModel, mats.vest, -.05, -.34, -.82, .2, .16, .22, false);
-cube(viewModel, mats.metal, .24, -.2, -.77, .19, .17, .48, false);
-cube(viewModel, mats.trim, .24, -.21, -1.13, .15, .13, .43, false);
-cube(viewModel, mats.metal, .24, -.19, -1.51, .055, .055, .48, false);
-cube(viewModel, mats.trim, .24, -.08, -.76, .08, .1, .22, false);
-cube(viewModel, mats.metal, .24, -.42, -.82, .13, .28, .17, false);
-cube(viewModel, mats.metal, .24, -.12, -.67, .12, .08, .17, false);
-cube(viewModel, mats.accent, .24, -.065, -.67, .07, .025, .1, false);
+const weaponModel = new THREE.Group();
+viewModel.add(weaponModel);
+const weapons = [
+  { name: 'CARBINE', cooldown: .16, build: () => {
+    cube(weaponModel, mats.metal, .24, -.2, -.77, .19, .17, .48, false);
+    cube(weaponModel, mats.trim, .24, -.21, -1.13, .15, .13, .43, false);
+    cube(weaponModel, mats.metal, .24, -.19, -1.51, .055, .055, .48, false);
+    cube(weaponModel, mats.trim, .24, -.08, -.76, .08, .1, .22, false);
+    cube(weaponModel, mats.metal, .24, -.42, -.82, .13, .28, .17, false);
+    cube(weaponModel, mats.metal, .24, -.12, -.67, .12, .08, .17, false);
+    cube(weaponModel, mats.accent, .24, -.065, -.67, .07, .025, .1, false);
+  }},
+  { name: 'PISTOL', cooldown: .28, build: () => {
+    cube(weaponModel, mats.metal, .24, -.24, -.79, .16, .19, .38, false);
+    cube(weaponModel, mats.trim, .24, -.2, -1.08, .12, .12, .28, false);
+    cube(weaponModel, mats.metal, .24, -.4, -.77, .11, .24, .13, false);
+    cube(weaponModel, mats.accent, .24, -.14, -.66, .07, .025, .08, false);
+  }},
+  { name: 'SHOTGUN', cooldown: .62, build: () => {
+    cube(weaponModel, mats.metal, .24, -.2, -.77, .2, .19, .47, false);
+    cube(weaponModel, mats.trim, .24, -.2, -1.15, .16, .16, .5, false);
+    cube(weaponModel, mats.metal, .24, -.19, -1.58, .085, .085, .56, false);
+    cube(weaponModel, mats.trim, .24, -.4, -.78, .15, .26, .2, false);
+    cube(weaponModel, mats.accent, .24, -.08, -.68, .08, .04, .12, false);
+  }},
+  { name: 'SMG', cooldown: .09, build: () => {
+    cube(weaponModel, mats.metal, .24, -.21, -.78, .18, .16, .4, false);
+    cube(weaponModel, mats.trim, .24, -.2, -1.06, .13, .12, .3, false);
+    cube(weaponModel, mats.metal, .24, -.19, -1.34, .045, .045, .28, false);
+    cube(weaponModel, mats.metal, .24, -.4, -.79, .11, .28, .12, false);
+    cube(weaponModel, mats.trim, .24, -.06, -.71, .1, .08, .16, false);
+  }}
+];
+let selectedWeapon = 0;
+const weaponLabel = document.querySelector('#weapon-label');
+const weaponButton = document.querySelector('#weapon-toggle');
+
+function selectWeapon(index) {
+  selectedWeapon = (index + weapons.length) % weapons.length;
+  weaponModel.clear();
+  weapons[selectedWeapon].build();
+  const label = `${selectedWeapon + 1} / ${weapons[selectedWeapon].name}`;
+  weaponLabel.textContent = label;
+}
+
+selectWeapon(0);
 
 const keys = new Set();
 let dragging = false;
 let previousPointer = { x: 0, y: 0 };
 let started = false;
+let shooting = false;
+let shotCooldown = 0;
+let verticalVelocity = 0;
+let grounded = true;
+let crouched = false;
+const groundLevel = .1;
+const bullets = [];
+const bulletGeometry = new THREE.CylinderGeometry(.018, .018, .72, 6);
+const bulletMaterial = new THREE.MeshStandardMaterial({
+  color: '#ffc36b',
+  emissive: '#ff7b24',
+  emissiveIntensity: 2.2,
+  roughness: .35
+});
+
+function shoot() {
+  const direction = new THREE.Vector3();
+  const origin = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  camera.getWorldPosition(origin);
+  origin.addScaledVector(direction, .65);
+  const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+  bullet.position.copy(origin);
+  bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+  scene.add(bullet);
+  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(75), life: 1.1 });
+  shotCooldown = weapons[selectedWeapon].cooldown;
+}
+
+function rotateCamera(deltaX, deltaY) {
+  yaw -= deltaX * .0024;
+  pitch = THREE.MathUtils.clamp(pitch - deltaY * .002, -.9, .9);
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+}
+
+function toggleCrouch() {
+  if (!started || !grounded) return;
+  crouched = !crouched;
+  document.querySelector('#crouch-toggle').textContent = crouched ? 'ĐỨNG DẬY' : 'NGỒI';
+  document.querySelector('#crouch-toggle').setAttribute('aria-pressed', String(crouched));
+}
+
+function cycleWeapon(direction) {
+  if (started) selectWeapon(selectedWeapon + direction);
+}
+
 const intro = document.querySelector('#intro');
 document.querySelector('#enter').addEventListener('click', () => {
   started = true;
@@ -163,43 +249,102 @@ document.querySelector('#enter').addEventListener('click', () => {
   canvas.focus();
 });
 addEventListener('keydown', (event) => {
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight"].includes(event.code)) event.preventDefault();
-  keys.add(event.code);
-  if (event.code === 'Escape') {
-    dragging = false;
-    canvas.style.cursor = 'grab';
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space", "ControlLeft", "ControlRight"].includes(event.code)) event.preventDefault();
+  if (event.code.startsWith('Digit') && Number(event.code.slice(5)) >= 1 && Number(event.code.slice(5)) <= 4) {
+    selectWeapon(Number(event.code.slice(5)) - 1);
   }
+  if ((event.code === 'KeyC' || event.code === 'ControlLeft' || event.code === 'ControlRight') && !event.repeat) toggleCrouch();
+  if (event.code === 'Space' && started && grounded && !event.repeat) {
+    verticalVelocity = 6.4;
+    grounded = false;
+  }
+  keys.add(event.code);
 });
 addEventListener('keyup', (event) => keys.delete(event.code));
+document.querySelector('#crouch-toggle').addEventListener('click', toggleCrouch);
+weaponButton.addEventListener('click', () => cycleWeapon(1));
+document.addEventListener('wheel', (event) => {
+  if (started) {
+    event.preventDefault();
+    cycleWeapon(event.deltaY > 0 ? 1 : -1);
+  }
+}, { passive: false });
 canvas.addEventListener('pointerdown', (event) => {
   if (!started) return;
-  dragging = true;
-  previousPointer = { x: event.clientX, y: event.clientY };
-  canvas.setPointerCapture(event.pointerId);
-  canvas.style.cursor = 'grabbing';
+  if (event.pointerType === 'mouse' && event.button === 0) {
+    shooting = true;
+    shoot();
+    previousPointer = { x: event.clientX, y: event.clientY };
+    if (canvas.requestPointerLock) {
+      try {
+        canvas.requestPointerLock()?.catch(() => { dragging = true; });
+      } catch {
+        dragging = true;
+      }
+    } else {
+      dragging = true;
+    }
+  } else if (event.pointerType !== 'mouse') {
+    dragging = true;
+    previousPointer = { x: event.clientX, y: event.clientY };
+    canvas.setPointerCapture(event.pointerId);
+  }
 });
 canvas.addEventListener('pointermove', (event) => {
-  if (!dragging) return;
-  yaw -= (event.clientX - previousPointer.x) * .005;
-  pitch = THREE.MathUtils.clamp(pitch - (event.clientY - previousPointer.y) * .003, -.55, .65);
-  player.rotation.y = yaw;
-  camera.rotation.x = pitch;
+  if (!dragging || document.pointerLockElement === canvas) return;
+  rotateCamera(event.clientX - previousPointer.x, event.clientY - previousPointer.y);
   previousPointer = { x: event.clientX, y: event.clientY };
 });
-canvas.addEventListener('pointerup', () => {
+addEventListener('pointerup', (event) => {
+  if (event.pointerType === 'mouse') shooting = false;
   dragging = false;
-  canvas.style.cursor = 'grab';
 });
 canvas.addEventListener('pointercancel', () => {
   dragging = false;
-  canvas.style.cursor = 'grab';
 });
-canvas.style.cursor = 'grab';
+document.addEventListener('pointerlockchange', () => {
+  canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'default';
+  if (document.pointerLockElement !== canvas) {
+    dragging = false;
+    shooting = false;
+  }
+});
+document.addEventListener('pointerlockerror', () => {
+  dragging = true;
+  canvas.style.cursor = 'none';
+});
+document.addEventListener('mousemove', (event) => {
+  if (document.pointerLockElement === canvas) rotateCamera(event.movementX, event.movementY);
+});
+canvas.style.cursor = 'default';
 
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  shotCooldown = Math.max(0, shotCooldown - delta);
+  if (started && shooting && shotCooldown <= 0) shoot();
+
+  if (started && !grounded) {
+    verticalVelocity -= 18 * delta;
+    player.position.y += verticalVelocity * delta;
+    if (player.position.y <= groundLevel) {
+      player.position.y = groundLevel;
+      verticalVelocity = 0;
+      grounded = true;
+    }
+  }
+
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+    bullet.mesh.position.addScaledVector(bullet.velocity, delta);
+    bullet.life -= delta;
+    if (bullet.life <= 0) {
+      scene.remove(bullet.mesh);
+      bullets.splice(i, 1);
+    }
+  }
+
   const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
   const right = new THREE.Vector3(-forward.z, 0, forward.x);
   let moveForward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
@@ -209,17 +354,18 @@ function animate() {
     const length = Math.hypot(moveForward, moveSide);
     moveForward /= length;
     moveSide /= length;
-    const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 8.1 : 4.7;
+    const sprinting = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && !crouched;
+    const speed = crouched ? 2.6 : sprinting ? 8.1 : 4.7;
     player.position.addScaledVector(forward, moveForward * speed * delta);
     player.position.addScaledVector(right, moveSide * speed * delta);
     player.position.x = THREE.MathUtils.clamp(player.position.x, -24, 24);
     player.position.z = THREE.MathUtils.clamp(player.position.z, -25, 25);
-    const bob = Math.abs(Math.sin(performance.now() * .012)) * .035;
-    camera.position.y = 1.68 + bob;
+    const bob = grounded && !crouched ? Math.abs(Math.sin(performance.now() * .012)) * .035 : 0;
+    camera.position.y += ((crouched ? 1.05 : 1.68) + bob - camera.position.y) * Math.min(1, delta * 12);
     viewModel.position.y = -bob;
   } else {
-    camera.position.y += (1.68 - camera.position.y) * .15;
-    viewModel.position.y *= .85;
+    camera.position.y += ((crouched ? 1.05 : 1.68) - camera.position.y) * Math.min(1, delta * 12);
+    viewModel.position.y += (0 - viewModel.position.y) * Math.min(1, delta * 12);
   }
   document.querySelector('#clock').textContent = new Date().toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit' });
   renderer.render(scene, camera);
