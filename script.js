@@ -312,12 +312,31 @@ camera.rotation.order = 'YXZ';
 
 const viewModel = new THREE.Group();
 camera.add(viewModel);
-cube(viewModel, mats.uniform, .43, -.49, -.48, .22, .24, .62, false).rotation.z = -.28;
+const boltArm = new THREE.Group();
+boltArm.position.set(.43, -.49, -.48);
+viewModel.add(boltArm);
+cube(boltArm, mats.uniform, 0, 0, 0, .22, .24, .62, false).rotation.z = -.28;
+cube(boltArm, mats.metal, -.045, -.045, -.31, .15, .095, .18, false);
 cube(viewModel, mats.uniform, -.32, -.52, -.43, .22, .23, .62, false).rotation.z = .35;
 cube(viewModel, mats.vest, .34, -.34, -.83, .2, .16, .22, false);
 cube(viewModel, mats.vest, -.05, -.34, -.82, .2, .16, .22, false);
 const weaponModel = new THREE.Group();
 viewModel.add(weaponModel);
+let boltHandle = null;
+let boltCycle = null;
+const boltArmRest = new THREE.Vector3(.43, -.49, -.48);
+const boltArmWork = new THREE.Vector3(.27, -.27, -.79);
+const boltHandleRest = new THREE.Vector3(.39, -.15, -.88);
+function resetBoltAction() {
+  boltCycle = null;
+  boltArm.position.copy(boltArmRest);
+  boltArm.rotation.set(0, 0, 0);
+  if (boltHandle) {
+    boltHandle.position.copy(boltHandleRest);
+    boltHandle.rotation.set(0, 0, 0);
+  }
+}
+
 const weapons = [
   { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .16, owned: true },
   { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .78 },
@@ -326,9 +345,9 @@ const weapons = [
   { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .16 },
   { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .18 },
   { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .32 },
-  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68 },
-  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76 },
-  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9 },
+  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, boltDuration: 2 },
+  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, boltDuration: 2 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, boltDuration: 2 },
   { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .16 },
   { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .13 },
   { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28 },
@@ -376,6 +395,7 @@ const categoryLabels = {
 };
 
 function buildWeaponModel(weapon) {
+  boltHandle = null;
   const pistol = weapon.category === 'Pistols';
   const shotgun = weapon.category === 'Shotguns' || weapon.name === 'Sawed-off';
   const sniper = weapon.category === 'Sniper Rifles';
@@ -396,6 +416,14 @@ function buildWeaponModel(weapon) {
     else cube(weaponModel, mats.metal, .24, -.34, -.78, .11, .2, .14, false);
   }
   cube(weaponModel, mats.accent, .24, -.08, -.68, .07, .025, .08, false);
+  if (sniper) {
+    boltHandle = new THREE.Group();
+    boltHandle.position.copy(boltHandleRest);
+    weaponModel.add(boltHandle);
+    cube(boltHandle, mats.metal, 0, 0, 0, .16, .045, .045, false);
+    cube(boltHandle, mats.metal, .045, .075, 0, .045, .15, .045, false);
+    cube(boltHandle, mats.accent, .045, .15, 0, .095, .07, .07, false);
+  }
 }
 
 const defaultLoadout = {
@@ -439,7 +467,11 @@ function updateAmmoUI() {
   ammoCapacityLabel.textContent = String(capacity);
   ammoDisplay.classList.toggle('ammo-low', ammo <= Math.max(1, Math.ceil(capacity * .2)));
   ammoDisplay.classList.toggle('is-reloading', isReloading && reloadWeapon === selectedWeapon);
-  reloadStatus.textContent = isReloading && reloadWeapon === selectedWeapon ? 'ĐANG NẠP ĐẠN…' : ammo === 0 ? 'NHẤN R ĐỂ NẠP' : '';
+  reloadStatus.textContent = isReloading && reloadWeapon === selectedWeapon
+    ? 'ĐANG NẠP ĐẠN…'
+    : boltCycle?.weaponIndex === selectedWeapon
+      ? 'ĐANG GẠT BOLT…'
+      : ammo === 0 ? 'NHẤN R ĐỂ NẠP' : '';
 }
 
 function updateAimUI() {
@@ -461,6 +493,7 @@ function saveLoadout() {
 
 function selectWeapon(index) {
   if (!weapons[index] || !ownedWeapons.has(weapons[index].name) || !Object.values(equippedSlots).includes(index)) return;
+  if (selectedWeapon !== index && boltCycle) resetBoltAction();
   if (selectedWeapon !== index && isReloading) {
     isReloading = false;
     reloadTimer = 0;
@@ -541,6 +574,7 @@ function openArmory(open) {
   armory.setAttribute('aria-hidden', String(!open));
   shooting = false;
   aiming = false;
+  resetBoltAction();
   updateAimUI();
   keys.clear();
   if (open && document.pointerLockElement) document.exitPointerLock();
@@ -561,7 +595,7 @@ function buyOrEquipWeapon(name) {
 }
 
 function startReload() {
-  if (!started || armoryOpen || isReloading) return;
+  if (!started || armoryOpen || isReloading || boltCycle) return;
   const weapon = weapons[selectedWeapon];
   const capacity = magazineCapacity(weapon);
   if ((magazineAmmo.get(weapon.name) ?? capacity) >= capacity) return;
@@ -590,6 +624,9 @@ let crouched = false;
 const groundLevel = .1;
 const bullets = [];
 const bulletGeometry = new THREE.CylinderGeometry(.018, .018, .72, 6);
+const casings = [];
+const casingGeometry = new THREE.CylinderGeometry(.022, .022, .11, 8);
+const casingMaterial = new THREE.MeshStandardMaterial({ color: '#bd8a36', metalness: .72, roughness: .32, emissive: '#38230a', emissiveIntensity: .18 });
 const bulletMaterial = new THREE.MeshStandardMaterial({
   color: '#ffc36b',
   emissive: '#ff7b24',
@@ -597,8 +634,64 @@ const bulletMaterial = new THREE.MeshStandardMaterial({
   roughness: .35
 });
 
+function ejectSniperCasing() {
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+  const forward = new THREE.Vector3();
+  const position = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  camera.getWorldPosition(position);
+  position.addScaledVector(forward, .72).addScaledVector(right, .34).addScaledVector(up, -.16);
+  const mesh = new THREE.Mesh(casingGeometry, casingMaterial);
+  mesh.position.copy(position);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), right);
+  scene.add(mesh);
+  casings.push({
+    mesh,
+    velocity: right.multiplyScalar(2.1).addScaledVector(up, 1.4).addScaledVector(forward, .5),
+    life: 3.2
+  });
+}
+
+function updateBoltAction(delta) {
+  if (!boltCycle) return;
+  if (boltCycle.weaponIndex !== selectedWeapon || !boltHandle) {
+    resetBoltAction();
+    return;
+  }
+  boltCycle.elapsed += delta;
+  const progress = Math.min(1, boltCycle.elapsed / boltCycle.duration);
+  const lift = progress < .18
+    ? THREE.MathUtils.smoothstep(progress, 0, .18)
+    : progress < .62 ? 1 : 1 - THREE.MathUtils.smoothstep(progress, .62, .82);
+  const pull = progress < .18
+    ? 0
+    : progress < .4
+      ? THREE.MathUtils.smoothstep(progress, .18, .4)
+      : progress < .62 ? 1 - THREE.MathUtils.smoothstep(progress, .4, .62) : 0;
+  const handReach = THREE.MathUtils.smoothstep(progress, .08, .23) * (1 - THREE.MathUtils.smoothstep(progress, .68, .94));
+  boltArm.position.lerpVectors(boltArmRest, boltArmWork, handReach);
+  boltArm.rotation.z = -.38 * handReach;
+  boltHandle.position.copy(boltHandleRest);
+  boltHandle.position.z += .14 * pull;
+  boltHandle.rotation.z = -1.05 * lift;
+
+  if (progress >= .4 && !boltCycle.ejected) {
+    boltCycle.ejected = true;
+    ejectSniperCasing();
+  }
+  if (progress >= 1) {
+    resetBoltAction();
+    updateAmmoUI();
+  }
+}
+
 function shoot() {
   if (!started || armoryOpen || isReloading) return;
+  if (boltCycle) {
+    shooting = false;
+    return;
+  }
   const weapon = weapons[selectedWeapon];
   const capacity = magazineCapacity(weapon);
   const ammo = magazineAmmo.get(weapon.name) ?? capacity;
@@ -619,9 +712,14 @@ function shoot() {
   bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1 });
   magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
-  pitch = THREE.MathUtils.clamp(pitch + weapon.recoil * (aiming ? .9 : 1), -.9, 1.35);
-  weaponModel.position.y = Math.min(weaponModel.position.y + .05 + weapon.recoil * .18, .5);
-  weaponModel.position.z = Math.min(weaponModel.position.z + .055 + weapon.recoil * .1, .3);
+  const recoilKick = weapon.recoil * .88;
+  pitch = THREE.MathUtils.clamp(pitch + recoilKick * (aiming ? .9 : 1), -.9, 1.35);
+  weaponModel.position.y = Math.min(weaponModel.position.y + .05 + recoilKick * .18, .5);
+  weaponModel.position.z = Math.min(weaponModel.position.z + .055 + recoilKick * .1, .3);
+  if (weapon.category === 'Sniper Rifles') {
+    boltCycle = { weaponIndex: selectedWeapon, elapsed: 0, duration: weapon.boltDuration, ejected: false };
+    shooting = false;
+  }
   updateAmmoUI();
 }
 
@@ -780,6 +878,7 @@ function animate() {
       updateAmmoUI();
     }
   }
+  updateBoltAction(delta);
   shotCooldown = Math.max(0, shotCooldown - delta);
   if (started && shooting && shotCooldown <= 0) shoot();
 
@@ -790,6 +889,25 @@ function animate() {
     if (bullet.life <= 0) {
       scene.remove(bullet.mesh);
       bullets.splice(i, 1);
+    }
+  }
+
+  for (let i = casings.length - 1; i >= 0; i--) {
+    const casing = casings[i];
+    casing.velocity.y -= 8.5 * delta;
+    casing.mesh.position.addScaledVector(casing.velocity, delta);
+    casing.mesh.rotation.x += delta * 11;
+    casing.mesh.rotation.z += delta * 8;
+    casing.life -= delta;
+    if (casing.mesh.position.y <= groundLevel) {
+      casing.mesh.position.y = groundLevel;
+      casing.velocity.y *= -.28;
+      casing.velocity.x *= .72;
+      casing.velocity.z *= .72;
+    }
+    if (casing.life <= 0) {
+      scene.remove(casing.mesh);
+      casings.splice(i, 1);
     }
   }
 
