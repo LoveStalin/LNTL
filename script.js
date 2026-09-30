@@ -147,23 +147,23 @@ cube(viewModel, mats.vest, -.05, -.34, -.82, .2, .16, .22, false);
 const weaponModel = new THREE.Group();
 viewModel.add(weaponModel);
 const weapons = [
-  { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, owned: true },
-  { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58 },
-  { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62 },
-  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68 },
-  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62 },
-  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82 },
-  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90 },
-  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115 },
-  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108 },
-  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135 },
-  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88 },
-  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84 },
-  { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65 },
-  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62 },
-  { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60 },
-  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92 },
-  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55 }
+  { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .018, sideRecoil: .003, owned: true },
+  { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .078, sideRecoil: .014 },
+  { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62, recoil: .066, sideRecoil: .012 },
+  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68, recoil: .012, sideRecoil: .005 },
+  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .008, sideRecoil: .004 },
+  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .014, sideRecoil: .004 },
+  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .03, sideRecoil: .008 },
+  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .06, sideRecoil: .01 },
+  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .07, sideRecoil: .012 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .085, sideRecoil: .015 },
+  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .025, sideRecoil: .006 },
+  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .019, sideRecoil: .006 },
+  { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .034, sideRecoil: .007 },
+  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .024, sideRecoil: .005 },
+  { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .011, sideRecoil: .004 },
+  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .062, sideRecoil: .013 },
+  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .073, sideRecoil: .014 }
 ];
 let savedWeapons = [];
 try {
@@ -215,17 +215,29 @@ const weaponButton = document.querySelector('#weapon-toggle');
 const armory = document.querySelector('#armory');
 const armoryCategories = document.querySelector('#armory-categories');
 const armoryStatus = document.querySelector('#armory-status');
+const scopeOverlay = document.querySelector('#scope-overlay');
 let armoryOpen = false;
+let aiming = false;
+let recoilPitch = 0;
+let recoilYaw = 0;
+
+function updateAimUI() {
+  const scoped = aiming && weapons[selectedWeapon].category === 'Sniper Rifles';
+  document.body.classList.toggle('scope-active', scoped);
+  scopeOverlay.setAttribute('aria-hidden', String(!scoped));
+}
 
 function selectWeapon(index) {
   if (!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
   selectedWeapon = index;
   weaponModel.clear();
+  weaponModel.position.set(0, 0, 0);
   buildWeaponModel(weapons[selectedWeapon]);
   const ownedIndex = weapons.filter((weapon) => ownedWeapons.has(weapon.name)).findIndex((weapon) => weapon.name === weapons[selectedWeapon].name);
   const label = `${ownedIndex + 1} / ${weapons[selectedWeapon].name}`;
   weaponLabel.textContent = label;
   armoryStatus.textContent = `${weapons[selectedWeapon].name} ĐANG ĐƯỢC TRANG BỊ`;
+  updateAimUI();
   renderArmory();
 }
 
@@ -280,6 +292,8 @@ function openArmory(open) {
   armory.classList.toggle('hidden', !open);
   armory.setAttribute('aria-hidden', String(!open));
   shooting = false;
+  aiming = false;
+  updateAimUI();
   keys.clear();
   if (open && document.pointerLockElement) document.exitPointerLock();
   canvas.style.cursor = open ? 'default' : (document.pointerLockElement === canvas ? 'none' : 'default');
@@ -332,14 +346,18 @@ function shoot() {
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
   bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapons[selectedWeapon].velocity), life: 1.1 });
-  shotCooldown = weapons[selectedWeapon].cooldown;
+  const weapon = weapons[selectedWeapon];
+  shotCooldown = weapon.cooldown;
+  recoilPitch = Math.min(recoilPitch + weapon.recoil * (aiming ? .82 : 1), .22);
+  recoilYaw = THREE.MathUtils.clamp(recoilYaw + (Math.random() * 2 - 1) * weapon.sideRecoil, -.07, .07);
+  weaponModel.position.z = Math.min(weaponModel.position.z + .035 + weapon.recoil * .45, .2);
 }
 
 function rotateCamera(deltaX, deltaY) {
   yaw -= deltaX * .0024;
   pitch = THREE.MathUtils.clamp(pitch - deltaY * .002, -.9, .9);
-  player.rotation.y = yaw;
-  camera.rotation.x = pitch;
+  camera.rotation.x = pitch + recoilPitch;
+  player.rotation.y = yaw + recoilYaw;
 }
 
 function toggleCrouch() {
@@ -423,25 +441,37 @@ canvas.addEventListener('pointerdown', (event) => {
     dragging = true;
     previousPointer = { x: event.clientX, y: event.clientY };
     canvas.setPointerCapture(event.pointerId);
+  } else if (event.pointerType === 'mouse' && event.button === 2) {
+    aiming = true;
+    updateAimUI();
   }
 });
+canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 canvas.addEventListener('pointermove', (event) => {
   if (!dragging || document.pointerLockElement === canvas) return;
   rotateCamera(event.clientX - previousPointer.x, event.clientY - previousPointer.y);
   previousPointer = { x: event.clientX, y: event.clientY };
 });
 addEventListener('pointerup', (event) => {
-  if (event.pointerType === 'mouse') shooting = false;
+  if (event.pointerType === 'mouse' && event.button === 0) shooting = false;
+  if (event.pointerType === 'mouse' && event.button === 2) {
+    aiming = false;
+    updateAimUI();
+  }
   dragging = false;
 });
 canvas.addEventListener('pointercancel', () => {
   dragging = false;
+  aiming = false;
+  updateAimUI();
 });
 document.addEventListener('pointerlockchange', () => {
   canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'default';
   if (document.pointerLockElement !== canvas) {
     dragging = false;
     shooting = false;
+    aiming = false;
+    updateAimUI();
   }
 });
 document.addEventListener('pointerlockerror', () => {
@@ -457,6 +487,18 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  const recoilReturn = Math.exp(-delta * (aiming ? 5.5 : 8));
+  recoilPitch *= recoilReturn;
+  recoilYaw *= recoilReturn;
+  weaponModel.position.z *= Math.exp(-delta * 12);
+  player.rotation.y = yaw + recoilYaw;
+  camera.rotation.x = pitch + recoilPitch;
+  const targetFov = aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72;
+  const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 9, delta);
+  if (Math.abs(nextFov - camera.fov) > .01) {
+    camera.fov = nextFov;
+    camera.updateProjectionMatrix();
+  }
   shotCooldown = Math.max(0, shotCooldown - delta);
   if (started && shooting && shotCooldown <= 0) shoot();
 

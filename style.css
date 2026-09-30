@@ -18,11 +18,28 @@ body { font-family: "DM Mono", monospace; }
 .map-caption { color: #b0b9ad; font-size: 9px; letter-spacing: 1px; margin-top: 7px; }
 .coordinates { position: fixed; z-index: 2; top: 100px; right: 36px; color: #d0d8cd; font-size: 10px; line-height: 1.8; text-align: right; pointer-events: none; }
 .coordinates span { color: var(--muted); }
-.crosshair { position: fixed; z-index: 2; left: 50%; top: 50%; width: 19px; height: 19px; transform: translate(-50%,-50%); pointer-events: none; opacity: .8; }
-.crosshair::before, .crosshair::after { content: ""; position: absolute; background: rgba(242,246,235,.86); box-shadow: 0 1px 3px #121714; }
-.crosshair::before { width: 1px; height: 19px; left: 9px; top: 0; }
-.crosshair::after { height: 1px; width: 19px; top: 9px; left: 0; }
-.crosshair i { position: absolute; left: 8px; top: 8px; width: 3px; height: 3px; border: 1px solid var(--acid); }
+.crosshair { position: fixed; z-index: 2; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%,-50%); pointer-events: none; opacity: .92; }
+.crosshair::before, .crosshair::after { content: ""; position: absolute; background: rgba(242,246,235,.9); box-shadow: 0 1px 3px #121714; }
+.crosshair::before { width: 1px; height: 6px; left: 10px; top: 0; }
+.crosshair::after { height: 1px; width: 6px; top: 10px; left: 0; }
+.crosshair i { position: absolute; left: 7px; top: 7px; width: 8px; height: 8px; border: 1px solid rgba(255,255,255,.9); border-radius: 50%; box-shadow: 0 0 2px #101410; }
+.crosshair b { position: absolute; left: 10px; top: 10px; width: 3px; height: 3px; border-radius: 50%; background: #f0443e; box-shadow: 0 0 4px rgba(240,68,62,.9); }
+.scope-overlay { display: none; position: fixed; z-index: 2; inset: 0; place-items: center; overflow: hidden; pointer-events: none; }
+.scope-active .scope-overlay { display: grid; }
+.scope-active .crosshair { display: none; }
+.scope-lens { position: relative; width: min(78vw, 78vh); aspect-ratio: 1; border: 2px solid rgba(4,7,6,.98); border-radius: 50%; background: radial-gradient(circle, transparent 54%, rgba(4,7,6,.12) 64%, rgba(4,7,6,.54) 72%, transparent 79%); box-shadow: 0 0 0 8px rgba(9,12,10,.94), 0 0 0 100vmax rgba(0,0,0,.97), inset 0 0 18px rgba(0,0,0,.38); }
+.scope-lens::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(circle, transparent 52%, rgba(0,0,0,.16) 69%, rgba(0,0,0,.68) 100%); }
+.scope-line { position: absolute; z-index: 1; display: block; background: rgba(15,20,17,.82); box-shadow: 0 0 1px rgba(255,255,255,.85); }
+.scope-line-x { left: 13%; right: 13%; top: calc(50% - .5px); height: 1px; }
+.scope-line-y { top: 13%; bottom: 13%; left: calc(50% - .5px); width: 1px; }
+.scope-center { position: absolute; z-index: 2; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%,-50%); border-radius: 50%; background: #f0443e; box-shadow: 0 0 4px rgba(240,68,62,.95); }
+.scope-mark { position: absolute; z-index: 1; display: block; background: rgba(22,27,24,.86); }
+.scope-mark-top, .scope-mark-bottom { left: calc(50% - 1px); width: 2px; height: 9px; }
+.scope-mark-top { top: 17%; }
+.scope-mark-bottom { bottom: 17%; }
+.scope-mark-left, .scope-mark-right { top: calc(50% - 1px); width: 9px; height: 2px; }
+.scope-mark-left { left: 17%; }
+.scope-mark-right { right: 17%; }
 .bottom { position: fixed; z-index: 3; left: 0; right: 0; bottom: 0; padding: 0 36px 27px; display: flex; align-items: end; justify-content: space-between; pointer-events: none; }
 .operator { display: flex; align-items: center; gap: 13px; min-width: 198px; }
 .portrait { width: 43px; height: 43px; border: 1px solid rgba(200,243,106,.58); display: grid; place-items: center; color: var(--acid); background: rgba(26,34,29,.82); font: 700 19px "Barlow Condensed", sans-serif; }
