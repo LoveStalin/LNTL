@@ -40,6 +40,21 @@ body { font-family: "DM Mono", monospace; }
 .scope-mark-left, .scope-mark-right { top: calc(50% - 1px); width: 9px; height: 2px; }
 .scope-mark-left { left: 17%; }
 .scope-mark-right { right: 17%; }
+.combat-card { position: fixed; z-index: 3; top: 92px; width: 174px; padding: 10px 12px; border: 1px solid rgba(237,240,232,.18); background: rgba(20,25,22,.8); backdrop-filter: blur(8px); pointer-events: none; }
+.combat-card[hidden], .training-settings[hidden] { display: none !important; }
+.combat-card > span { display: block; color: #bac3b8; font-size: 8px; letter-spacing: 1px; }
+.combat-card > strong { display: block; margin: 4px 0 6px; color: var(--ink); font: 700 20px/1 "Barlow Condensed", sans-serif; }
+.combat-card > strong b { color: var(--acid); }
+.combat-card > strong small { color: var(--muted); font: 9px "DM Mono", monospace; }
+.player-health { left: 36px; }
+.bot-health { left: 50%; transform: translateX(-50%); }
+.bot-health > strong b { color: #f08b73; }
+.bot-health > small { display: block; margin-top: 5px; color: #c2a09a; font-size: 8px; letter-spacing: .8px; }
+.health-track { display: block; height: 4px; overflow: hidden; background: rgba(237,240,232,.17); }
+.health-track em { display: block; width: 100%; height: 100%; background: var(--acid); transition: width .16s ease; }
+.bot-health .health-track em { background: #e97862; }
+.combat-card.is-dead { opacity: .65; }
+.combat-card.is-dead > strong b { color: var(--red); }
 .ammo-display { position: fixed; z-index: 3; right: 36px; bottom: 145px; min-width: 124px; padding: 10px 13px; border: 1px solid rgba(237,240,232,.17); background: rgba(20,25,22,.78); backdrop-filter: blur(8px); text-align: right; pointer-events: none; }
 .ammo-weapon { display: block; color: #b8c1b5; font: 700 13px "Barlow Condensed", sans-serif; letter-spacing: .8px; }
 .ammo-display strong { display: block; margin: 1px 0; color: var(--ink); font: 700 27px/1 "Barlow Condensed", sans-serif; }
@@ -73,6 +88,28 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
 .intro p { margin: 0; color: #aab4a8; font-size: 10px; line-height: 1.8; }
 .enter { width: 100%; margin-top: 20px; padding: 13px; border: 0; background: var(--acid); color: #182018; cursor: pointer; font: 700 12px "DM Mono", monospace; letter-spacing: .7px; transition: background .15s ease; }
 .enter:hover { background: #d8ff8b; }
+.settings-open { width: 100%; margin-top: 9px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(237,240,232,.18); background: rgba(237,240,232,.045); color: #c2cbc0; cursor: pointer; font: 10px "DM Mono", monospace; letter-spacing: .7px; }
+.settings-open:hover, .settings-open[aria-expanded="true"] { border-color: rgba(200,243,106,.55); color: var(--acid); }
+.settings-open span { color: var(--acid); font-size: 15px; }
+.training-settings { margin-top: 10px; padding: 13px; border: 1px solid rgba(200,243,106,.3); background: rgba(200,243,106,.045); }
+.settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(237,240,232,.11); }
+.settings-heading div > span { display: block; color: var(--muted); font-size: 8px; letter-spacing: 1px; }
+.settings-heading strong { display: block; margin-top: 4px; color: var(--ink); font: 700 16px "Barlow Condensed", sans-serif; }
+.mode-badge { padding: 5px 7px; border: 1px solid rgba(237,240,232,.18); color: #aab4a8; font-size: 8px; letter-spacing: .8px; }
+.training-settings:has(#bot-training:checked) .mode-badge { border-color: rgba(200,243,106,.5); color: var(--acid); }
+.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 0 10px; cursor: pointer; }
+.setting-row > span:first-child { min-width: 0; }
+.setting-row strong { display: block; color: #e2e8dd; font-size: 10px; font-weight: 500; }
+.setting-row small { display: block; margin-top: 4px; color: #929d91; font-size: 8px; line-height: 1.5; }
+.switch { position: relative; flex: 0 0 auto; width: 38px; height: 22px; }
+.switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.switch i { position: absolute; inset: 0; border: 1px solid rgba(237,240,232,.28); border-radius: 20px; background: rgba(0,0,0,.25); transition: background .16s ease, border-color .16s ease; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #aab4a8; transition: transform .16s ease, background .16s ease; }
+.switch input:checked + i { border-color: var(--acid); background: rgba(200,243,106,.2); }
+.switch input:checked + i::after { transform: translateX(16px); background: var(--acid); }
+.switch input:focus-visible + i { outline: 2px solid var(--acid); outline-offset: 3px; }
+.settings-done { width: 100%; padding: 8px; border: 0; background: rgba(237,240,232,.1); color: var(--ink); cursor: pointer; font: 9px "DM Mono", monospace; letter-spacing: .8px; }
+.settings-done:hover { background: rgba(200,243,106,.16); color: var(--acid); }
 .intro-hint { margin-top: 11px; color: #788378; text-align: center; font-size: 9px; }
 .mobile-note { display: none; }
 .armory { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(8, 12, 10, .82); backdrop-filter: blur(12px); }

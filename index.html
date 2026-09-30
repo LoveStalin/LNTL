@@ -20,10 +20,17 @@
     <div class="brand"><div class="brand-mark">07</div><div><div class="brand-title">OUTPOST / FIELD OPS</div><div class="brand-sub">TACTICAL SIMULATION</div></div></div>
     <div class="top-meta"><span class="live">TRAINING LIVE</span><span>BUILD 0.1.07</span><span id="clock">00:00</span></div>
   </header>
-  <div class="map-label"><span class="map-index">A.</span><div><div class="map-title">Khu dân cư<br>ngoại vi</div><div class="map-caption">SECTOR 07 · VIETNAM</div></div></div>
-  <div class="coordinates"><span>ĐỊA HÌNH</span> &nbsp; ĐÔ THỊ / NGOẠI Ô<br><span>THỜI TIẾT</span> &nbsp; NẮNG NHẸ</div>
   <div class="crosshair red-dot" id="crosshair" aria-hidden="true"><i></i><b></b></div>
   <div class="scope-overlay" id="scope-overlay" aria-hidden="true"><div class="scope-lens"><i class="scope-line scope-line-x"></i><i class="scope-line scope-line-y"></i><i class="scope-center"></i><span class="scope-mark scope-mark-top"></span><span class="scope-mark scope-mark-bottom"></span><span class="scope-mark scope-mark-left"></span><span class="scope-mark scope-mark-right"></span></div></div>
+  <aside class="player-health combat-card" id="player-health" aria-label="Sức khỏe người chơi">
+    <span>NGƯỜI CHƠI</span><strong><b id="player-hp">100</b><small> / 100 HP</small></strong>
+    <i class="health-track"><em id="player-hp-bar"></em></i>
+  </aside>
+  <aside class="bot-health combat-card" id="bot-health" aria-label="Sức khỏe bot địch" hidden>
+    <span>ĐỐI THỦ · BOT</span><strong><b id="bot-hp">100</b><small> / 100 HP</small></strong>
+    <i class="health-track"><em id="bot-hp-bar"></em></i>
+    <small id="bot-state">ĐANG TRUY TÌM</small>
+  </aside>
   <aside class="ammo-display" id="ammo-display" aria-live="polite" aria-label="Đạn trong băng">
     <span class="ammo-weapon" id="ammo-weapon">CARBINE</span>
     <strong><span id="ammo-current">30</span><i>/</i><span id="ammo-capacity">30</span></strong>
@@ -31,17 +38,24 @@
     <em id="reload-status"></em>
   </aside>
   <footer class="bottom">
-    <div class="operator"><div class="portrait">01</div><div><div class="operator-name">GHOST / ALPHA</div><div class="operator-class">RECON · CẤP 04</div><div class="vitals"><span>HP <b>100</b></span><span>ARM <b>075</b></span></div></div></div>
     <div class="controls"><span class="control"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> DI CHUYỂN</span><span class="control"><kbd>SHIFT</kbd> CHẠY</span><span class="control"><kbd>SPACE</kbd> NHẢY</span><button class="game-action" id="crouch-toggle" type="button" aria-pressed="false">NGỒI <kbd>C</kbd></button><button class="game-action" id="weapon-toggle" type="button">VŨ KHÍ: <span id="weapon-label">1 / CARBINE</span> ↻</button><span class="control"><kbd>1 / 2 / LĂN CHUỘT</kbd> ĐỔI 2 Ô SÚNG</span><span class="control"><kbd>R</kbd> NẠP ĐẠN</span><span class="control"><kbd>B</kbd> KHO SÚNG</span><span class="control"><kbd>NHẤN CHUỘT PHẢI</kbd> BẬT/TẮT NGẮM</span><span class="control"><kbd>GIỮ CHUỘT TRÁI</kbd> BẮN / XOAY NHÌN</span><span class="control"><kbd>ESC</kbd> THẢ CHUỘT</span></div>
-    <div class="status"><strong>▰ &nbsp; TÌNH TRẠNG: SẴN SÀNG</strong>PHẠM VI HUẤN LUYỆN: ĐANG HOẠT ĐỘNG</div>
   </footer>
   <section class="intro" id="intro">
     <div class="intro-panel">
       <div class="intro-kicker">OUTPOST 07 &nbsp; / &nbsp; BẢN THỬ NGHIỆM</div>
       <h1>VÀO KHU VỰC<br>HUẤN LUYỆN</h1>
-      <p>Bãi tập ngoại ô. Hai công trình, một khoảng sân bê tông và một nhiệm vụ: khảo sát địa hình.</p>
+      <p>Bạn xuất phát trong căn nhà bên trái. Chọn có bot trong Cài đặt để bật trận luyện tập đối kháng.</p>
       <p class="mobile-note">Thiết bị cảm ứng: kéo trên màn hình để xoay góc nhìn.</p>
       <button class="enter" id="enter">BẮT ĐẦU TUẦN TRA &nbsp; ↗</button>
+      <button class="settings-open" id="settings-open" type="button" aria-expanded="false" aria-controls="training-settings">CÀI ĐẶT TRẬN ĐẤU <span>⚙</span></button>
+      <section class="training-settings" id="training-settings" hidden>
+        <div class="settings-heading"><div><span>CHẾ ĐỘ CHƠI</span><strong>Luyện tập với Bot</strong></div><span class="mode-badge" id="bot-mode-label">KHÔNG</span></div>
+        <label class="setting-row" for="bot-training">
+          <span><strong>Bot đối thủ</strong><small>Một bot xuất phát ở căn nhà bên phải, có thể di chuyển và bắn.</small></span>
+          <span class="switch"><input id="bot-training" type="checkbox"><i></i></span>
+        </label>
+        <button class="settings-done" id="settings-done" type="button">XONG</button>
+      </section>
       <div class="intro-hint">WASD DI CHUYỂN · SPACE NHẢY · R NẠP ĐẠN · 1/2 ĐỔI 2 Ô SÚNG · B MỞ KHO</div>
     </div>
   </section>

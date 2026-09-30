@@ -302,13 +302,45 @@ function getSurfaceAt(x, z, feetY) {
 }
 
 const player = new THREE.Group();
-player.position.set(0, .1, 8.4);
+const playerSpawn = new THREE.Vector3(-14, .1, 0);
+player.position.copy(playerSpawn);
 scene.add(player);
-let yaw = -.85;
+let yaw = -Math.PI / 2;
 let pitch = -.025;
 player.add(camera);
 camera.position.set(0, 1.68, 0);
 camera.rotation.order = 'YXZ';
+
+let botTrainingEnabled = false;
+const bot = new THREE.Group();
+const botSpawn = new THREE.Vector3(14, .1, 0);
+bot.position.copy(botSpawn);
+bot.rotation.y = Math.PI / 2;
+bot.visible = false;
+const botUniform = new THREE.MeshStandardMaterial({ color: '#394b47', roughness: .86 });
+const botVest = new THREE.MeshStandardMaterial({ color: '#263b3c', roughness: .78 });
+const botHelmet = new THREE.MeshStandardMaterial({ color: '#a6483d', roughness: .72 });
+const botSkin = new THREE.MeshStandardMaterial({ color: '#b88669', roughness: .88 });
+const botGunMaterial = new THREE.MeshStandardMaterial({ color: '#282d2a', metalness: .35, roughness: .6 });
+cube(bot, botUniform, 0, 1.02, 0, .56, .76, .34, false);
+cube(bot, botVest, 0, 1.02, -.19, .62, .56, .12, false);
+const botHead = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 10), botSkin);
+botHead.position.set(0, 1.58, 0);
+bot.add(botHead);
+const botHelmetMesh = new THREE.Mesh(new THREE.SphereGeometry(.23, 12, 8), botHelmet);
+botHelmetMesh.position.set(0, 1.72, 0);
+botHelmetMesh.scale.y = .65;
+bot.add(botHelmetMesh);
+for (const side of [-1, 1]) {
+  cube(bot, botUniform, side * .37, 1.05, -.05, .19, .62, .2, false).rotation.z = -side * .12;
+  cube(bot, botUniform, side * .17, .37, 0, .22, .68, .24, false);
+}
+cube(bot, botGunMaterial, .12, 1.08, -.53, .12, .12, .68, false);
+cube(bot, botGunMaterial, .12, .97, -.38, .1, .24, .12, false);
+const botMuzzle = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff9d45' }));
+botMuzzle.position.set(.12, 1.08, -.9);
+botMuzzle.visible = false;
+bot.add(botMuzzle);
 
 const viewModel = new THREE.Group();
 camera.add(viewModel);
@@ -338,23 +370,23 @@ function resetBoltAction() {
 }
 
 const weapons = [
-  { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .16, owned: true },
-  { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .78 },
-  { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62, recoil: .68 },
-  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68, recoil: .2 },
-  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .16 },
-  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .18 },
-  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .32 },
-  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, boltDuration: 2 },
-  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, boltDuration: 2 },
-  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, boltDuration: 2 },
-  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .16 },
-  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .13 },
-  { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28 },
-  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, owned: true },
-  { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12 },
-  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58 },
-  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72 }
+  { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .16, damage: 24, owned: true },
+  { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .78, damage: 38 },
+  { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62, recoil: .68, damage: 46 },
+  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68, recoil: .2, damage: 20 },
+  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .16, damage: 15 },
+  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .18, damage: 25 },
+  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .32, damage: 34 },
+  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, damage: 78, boltDuration: 2 },
+  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, damage: 86, boltDuration: 2 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, damage: 100, boltDuration: 2 },
+  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .16, damage: 26 },
+  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .13, damage: 22 },
+  { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28, damage: 28 },
+  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, damage: 23, owned: true },
+  { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12, damage: 16 },
+  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58, damage: 52 },
+  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72, damage: 40 }
 ];
 function magazineCapacity(weapon) {
   if (weapon.name === 'Sawed-off' || weapon.name === 'S686') return 2;
@@ -451,6 +483,16 @@ const ammoWeaponLabel = document.querySelector('#ammo-weapon');
 const ammoCurrentLabel = document.querySelector('#ammo-current');
 const ammoCapacityLabel = document.querySelector('#ammo-capacity');
 const reloadStatus = document.querySelector('#reload-status');
+const playerHpLabel = document.querySelector('#player-hp');
+const playerHpBar = document.querySelector('#player-hp-bar');
+const botHpLabel = document.querySelector('#bot-hp');
+const botHpBar = document.querySelector('#bot-hp-bar');
+const botHealthPanel = document.querySelector('#bot-health');
+const botStateLabel = document.querySelector('#bot-state');
+const botTrainingToggle = document.querySelector('#bot-training');
+const botModeLabel = document.querySelector('#bot-mode-label');
+const settingsPanel = document.querySelector('#training-settings');
+const settingsOpenButton = document.querySelector('#settings-open');
 let armoryOpen = false;
 let aiming = false;
 let isReloading = false;
@@ -479,6 +521,49 @@ function updateAimUI() {
   document.body.classList.toggle('scope-active', scoped);
   scopeOverlay.setAttribute('aria-hidden', String(!scoped));
 }
+
+let playerHealth = 100;
+let botHealth = 100;
+let botAlive = true;
+let botRespawnTimer = 0;
+let botShotTimer = 1.5;
+let botMuzzleTimer = 0;
+let botStrafeSign = 1;
+let playerInvulnerableTimer = 0;
+
+function updateCombatUI() {
+  playerHpLabel.textContent = String(Math.ceil(playerHealth));
+  playerHpBar.style.width = `${Math.max(0, playerHealth)}%`;
+  botHpLabel.textContent = String(Math.ceil(botHealth));
+  botHpBar.style.width = `${Math.max(0, botHealth)}%`;
+  botHealthPanel.classList.toggle('is-dead', !botAlive);
+  botStateLabel.textContent = botAlive ? 'ĐANG TRUY TÌM' : `HỒI SINH ${Math.ceil(botRespawnTimer)}s`;
+  botHealthPanel.hidden = !botTrainingEnabled;
+}
+
+function setBotTraining(enabled) {
+  botTrainingEnabled = enabled;
+  botHealth = 100;
+  botAlive = true;
+  botRespawnTimer = 0;
+  botShotTimer = 1.5;
+  bot.position.copy(botSpawn);
+  bot.rotation.y = Math.PI / 2;
+  bot.visible = enabled;
+  if (enabled) scene.add(bot);
+  else {
+    scene.remove(bot);
+    for (let index = bullets.length - 1; index >= 0; index--) {
+      if (bullets[index].owner === 'bot') {
+        scene.remove(bullets[index].mesh);
+        bullets.splice(index, 1);
+      }
+    }
+  }
+  updateCombatUI();
+}
+
+updateCombatUI();
 
 function saveLoadout() {
   try {
@@ -551,7 +636,7 @@ function renderArmory() {
       name.textContent = weapon.name;
       const meta = document.createElement('span');
       meta.className = 'weapon-meta';
-      meta.textContent = `${magazineCapacity(weapon)} VIÊN / BĂNG · $${weapon.cost.toLocaleString('en-US')}`;
+      meta.textContent = `${weapon.damage} DAMAGE · ${magazineCapacity(weapon)} VIÊN · $${weapon.cost.toLocaleString('en-US')}`;
       info.append(name, meta);
       const button = document.createElement('button');
       button.className = 'weapon-action';
@@ -709,10 +794,10 @@ function shoot() {
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
-  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1 });
+  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1, owner: 'player', damage: weapon.damage });
   magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
-  const recoilKick = weapon.recoil * .88;
+  const recoilKick = weapon.recoil * .4;
   pitch = THREE.MathUtils.clamp(pitch + recoilKick * (aiming ? .9 : 1), -.9, 1.35);
   weaponModel.position.y = Math.min(weaponModel.position.y + .05 + recoilKick * .18, .5);
   weaponModel.position.z = Math.min(weaponModel.position.z + .055 + recoilKick * .1, .3);
@@ -721,6 +806,142 @@ function shoot() {
     shooting = false;
   }
   updateAmmoUI();
+}
+
+function closestPointOnSegment(point, start, end, target) {
+  const segment = end.clone().sub(start);
+  const lengthSquared = segment.lengthSq();
+  if (lengthSquared === 0) return target.copy(start);
+  const amount = THREE.MathUtils.clamp(point.clone().sub(start).dot(segment) / lengthSquared, 0, 1);
+  return target.copy(start).addScaledVector(segment, amount);
+}
+
+function firstObstacleDistance(start, end) {
+  const segment = end.clone().sub(start);
+  const length = segment.length();
+  if (length === 0) return Infinity;
+  const ray = new THREE.Ray(start, segment.normalize());
+  let nearest = Infinity;
+  const intersection = new THREE.Vector3();
+  for (const box of collisionBoxes) {
+    const bounds = new THREE.Box3(
+      new THREE.Vector3(box.x - box.halfX, box.bottom, box.z - box.halfZ),
+      new THREE.Vector3(box.x + box.halfX, box.top, box.z + box.halfZ)
+    );
+    if (ray.intersectBox(bounds, intersection)) {
+      const distance = intersection.distanceTo(start);
+      if (distance > .12 && distance < nearest && distance <= length) nearest = distance;
+    }
+  }
+  return nearest;
+}
+
+function damageBot(amount) {
+  if (!botTrainingEnabled || !botAlive) return;
+  botHealth = Math.max(0, botHealth - amount);
+  if (botHealth === 0) {
+    botAlive = false;
+    botRespawnTimer = 5;
+    bot.visible = false;
+  }
+  updateCombatUI();
+}
+
+function damagePlayer(amount) {
+  if (playerInvulnerableTimer > 0) return;
+  playerHealth = Math.max(0, playerHealth - amount);
+  if (playerHealth === 0) {
+    playerHealth = 100;
+    player.position.copy(playerSpawn);
+    pitch = 0;
+    yaw = -Math.PI / 2;
+    playerInvulnerableTimer = 1.5;
+  }
+  updateCombatUI();
+}
+
+function fireBot(target) {
+  const origin = bot.localToWorld(new THREE.Vector3(.12, 1.08, -.9));
+  const direction = target.clone().sub(origin).normalize();
+  // Small, consistent spread keeps the bot dangerous without making every shot unavoidable.
+  direction.x += (Math.random() - .5) * .035;
+  direction.y += (Math.random() - .5) * .025;
+  direction.z += (Math.random() - .5) * .035;
+  direction.normalize();
+  const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+  bullet.position.copy(origin);
+  bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+  scene.add(bullet);
+  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(30), life: 2.2, owner: 'bot', damage: 9 });
+  botMuzzleTimer = .08;
+  botMuzzle.visible = true;
+}
+
+function updateBot(delta) {
+  if (!botTrainingEnabled) return;
+  playerInvulnerableTimer = Math.max(0, playerInvulnerableTimer - delta);
+  botMuzzleTimer = Math.max(0, botMuzzleTimer - delta);
+  botMuzzle.visible = botMuzzleTimer > 0;
+  if (!botAlive) {
+    botRespawnTimer -= delta;
+    if (botRespawnTimer <= 0) {
+      botHealth = 100;
+      botAlive = true;
+      bot.position.copy(botSpawn);
+      bot.rotation.y = Math.PI / 2;
+      bot.visible = true;
+      botShotTimer = 1.1;
+      updateCombatUI();
+    } else {
+      updateCombatUI();
+    }
+    return;
+  }
+
+  const target = camera.getWorldPosition(new THREE.Vector3());
+  const botEye = bot.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+  const offsetX = target.x - bot.position.x;
+  const offsetZ = target.z - bot.position.z;
+  const distance = Math.hypot(offsetX, offsetZ);
+  bot.rotation.y = Math.atan2(-offsetX, -offsetZ);
+
+  const desiredRange = 9;
+  if (distance > desiredRange) {
+    const speed = 2.65;
+    const stepX = offsetX / Math.max(distance, .001) * speed * delta;
+    const stepZ = offsetZ / Math.max(distance, .001) * speed * delta;
+    let moved = false;
+    if (canOccupy(bot.position.x + stepX, bot.position.z, bot.position.y) &&
+        Math.hypot(bot.position.x + stepX - player.position.x, bot.position.z - player.position.z) > 1.1) {
+      bot.position.x += stepX;
+      moved = true;
+    }
+    if (canOccupy(bot.position.x, bot.position.z + stepZ, bot.position.y) &&
+        Math.hypot(bot.position.x - player.position.x, bot.position.z + stepZ - player.position.z) > 1.1) {
+      bot.position.z += stepZ;
+      moved = true;
+    }
+    if (!moved) {
+      botStrafeSign *= -1;
+      const sideStep = botStrafeSign * speed * delta;
+      if (canOccupy(bot.position.x, bot.position.z + sideStep, bot.position.y)) bot.position.z += sideStep;
+    }
+  } else if (distance < 6) {
+    const sideStep = botStrafeSign * 1.1 * delta;
+    if (canOccupy(bot.position.x, bot.position.z + sideStep, bot.position.y)) bot.position.z += sideStep;
+    else botStrafeSign *= -1;
+  }
+
+  const surface = getSurfaceAt(bot.position.x, bot.position.z, bot.position.y);
+  bot.position.y = surface.height;
+  botShotTimer -= delta;
+  if (distance < 32 && botShotTimer <= 0 && firstObstacleDistance(botEye, target) === Infinity) {
+    fireBot(target);
+    botShotTimer = .88 + Math.random() * .42;
+    botStateLabel.textContent = 'ĐANG GIAO TRANH';
+  } else if (distance >= 32 || firstObstacleDistance(botEye, target) !== Infinity) {
+    botStateLabel.textContent = 'ĐANG TRUY TÌM';
+  }
 }
 
 function rotateCamera(deltaX, deltaY) {
@@ -752,9 +973,25 @@ function handleArmoryClick(event) {
 }
 
 const intro = document.querySelector('#intro');
+settingsOpenButton.addEventListener('click', () => {
+  const open = settingsPanel.hidden;
+  settingsPanel.hidden = !open;
+  settingsOpenButton.setAttribute('aria-expanded', String(open));
+  if (open) botTrainingToggle.focus();
+});
+document.querySelector('#settings-done').addEventListener('click', () => {
+  settingsPanel.hidden = true;
+  settingsOpenButton.setAttribute('aria-expanded', 'false');
+  settingsOpenButton.focus();
+});
+botTrainingToggle.addEventListener('change', () => {
+  botModeLabel.textContent = botTrainingToggle.checked ? 'CÓ' : 'KHÔNG';
+});
 document.querySelector('#enter').addEventListener('click', () => {
+  setBotTraining(botTrainingToggle.checked);
   started = true;
   intro.classList.add('hidden');
+  settingsPanel.hidden = true;
   canvas.focus();
 });
 addEventListener('keydown', (event) => {
@@ -881,10 +1118,33 @@ function animate() {
   updateBoltAction(delta);
   shotCooldown = Math.max(0, shotCooldown - delta);
   if (started && shooting && shotCooldown <= 0) shoot();
+  if (started) updateBot(delta);
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
+    const previousPosition = bullet.mesh.position.clone();
     bullet.mesh.position.addScaledVector(bullet.velocity, delta);
+    const obstacleDistance = firstObstacleDistance(previousPosition, bullet.mesh.position);
+    const targetPosition = bullet.owner === 'player'
+      ? bot.position.clone().add(new THREE.Vector3(0, 1.08, 0))
+      : camera.getWorldPosition(new THREE.Vector3());
+    const closestPoint = closestPointOnSegment(targetPosition, previousPosition, bullet.mesh.position, new THREE.Vector3());
+    const hitDistance = previousPosition.distanceTo(closestPoint);
+    const hitRadius = bullet.owner === 'player' ? .55 : .46;
+    const hitTarget = (bullet.owner === 'player' ? botTrainingEnabled && botAlive : true) &&
+      closestPoint.distanceTo(targetPosition) <= hitRadius && hitDistance <= obstacleDistance;
+    if (hitTarget) {
+      if (bullet.owner === 'player') damageBot(bullet.damage);
+      else damagePlayer(bullet.damage);
+      scene.remove(bullet.mesh);
+      bullets.splice(i, 1);
+      continue;
+    }
+    if (obstacleDistance !== Infinity) {
+      scene.remove(bullet.mesh);
+      bullets.splice(i, 1);
+      continue;
+    }
     bullet.life -= delta;
     if (bullet.life <= 0) {
       scene.remove(bullet.mesh);
@@ -932,8 +1192,10 @@ function animate() {
       -25,
       25
     );
-    if (canOccupy(nextX, player.position.z, player.position.y)) player.position.x = nextX;
-    if (canOccupy(player.position.x, nextZ, player.position.y)) player.position.z = nextZ;
+    if (canOccupy(nextX, player.position.z, player.position.y) &&
+      (!botTrainingEnabled || !botAlive || Math.hypot(nextX - bot.position.x, player.position.z - bot.position.z) > 1.05)) player.position.x = nextX;
+    if (canOccupy(player.position.x, nextZ, player.position.y) &&
+      (!botTrainingEnabled || !botAlive || Math.hypot(player.position.x - bot.position.x, nextZ - bot.position.z) > 1.05)) player.position.z = nextZ;
   }
 
   if (started) {
