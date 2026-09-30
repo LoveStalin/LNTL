@@ -332,11 +332,21 @@ const weapons = [
   { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .16 },
   { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .13 },
   { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28 },
-  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22 },
+  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, owned: true },
   { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12 },
   { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58 },
   { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72 }
 ];
+function magazineCapacity(weapon) {
+  if (weapon.name === 'Sawed-off' || weapon.name === 'S686') return 2;
+  if (weapon.category === 'Heavy Weapons') return 100;
+  if (weapon.category === 'Rifles') return 30;
+  if (weapon.category === 'Pistols') return 7;
+  if (weapon.category === 'Sniper Rifles') return 5;
+  if (weapon.category === 'SMGs') return 25;
+  return 5;
+}
+const magazineAmmo = new Map(weapons.map((weapon) => [weapon.name, magazineCapacity(weapon)]));
 let savedWeapons = [];
 try {
   const storedWeapons = JSON.parse(localStorage.getItem('outpost-owned-weapons') || '[]');
@@ -348,6 +358,13 @@ const ownedWeapons = new Set([
   ...weapons.filter((weapon) => weapon.owned).map((weapon) => weapon.name),
   ...savedWeapons.filter((name) => weapons.some((weapon) => weapon.name === name))
 ]);
+let savedLoadout = {};
+try {
+  const storedLoadout = JSON.parse(localStorage.getItem('outpost-loadout') || '{}');
+  if (storedLoadout && typeof storedLoadout === 'object' && !Array.isArray(storedLoadout)) savedLoadout = storedLoadout;
+} catch {
+  savedLoadout = {};
+}
 const weaponCategories = ['Shotguns', 'SMGs', 'Rifles', 'Sniper Rifles', 'Heavy Weapons', 'Pistols'];
 const categoryLabels = {
   'Shotguns': 'SHOTGUNS',
@@ -381,15 +398,49 @@ function buildWeaponModel(weapon) {
   cube(weaponModel, mats.accent, .24, -.08, -.68, .07, .025, .08, false);
 }
 
-let selectedWeapon = 0;
+const defaultLoadout = {
+  primary: 0,
+  pistol: weapons.findIndex((weapon) => weapon.name === 'P92')
+};
+const equippedSlots = { ...defaultLoadout };
+for (const slot of ['primary', 'pistol']) {
+  const storedIndex = weapons.findIndex((weapon) => weapon.name === savedLoadout[slot]);
+  if (storedIndex >= 0 && ownedWeapons.has(weapons[storedIndex].name) &&
+      (slot === 'pistol' ? weapons[storedIndex].category === 'Pistols' : weapons[storedIndex].category !== 'Pistols')) {
+    equippedSlots[slot] = storedIndex;
+  }
+}
+let activeWeaponSlot = 'primary';
+let selectedWeapon = equippedSlots.primary;
 const weaponLabel = document.querySelector('#weapon-label');
 const weaponButton = document.querySelector('#weapon-toggle');
 const armory = document.querySelector('#armory');
 const armoryCategories = document.querySelector('#armory-categories');
 const armoryStatus = document.querySelector('#armory-status');
 const scopeOverlay = document.querySelector('#scope-overlay');
+const ammoDisplay = document.querySelector('#ammo-display');
+const ammoWeaponLabel = document.querySelector('#ammo-weapon');
+const ammoCurrentLabel = document.querySelector('#ammo-current');
+const ammoCapacityLabel = document.querySelector('#ammo-capacity');
+const reloadStatus = document.querySelector('#reload-status');
 let armoryOpen = false;
 let aiming = false;
+let isReloading = false;
+let reloadTimer = 0;
+let reloadWeapon = -1;
+const reloadDuration = 1.35;
+
+function updateAmmoUI() {
+  const weapon = weapons[selectedWeapon];
+  const capacity = magazineCapacity(weapon);
+  const ammo = magazineAmmo.get(weapon.name) ?? capacity;
+  ammoWeaponLabel.textContent = weapon.name;
+  ammoCurrentLabel.textContent = String(ammo);
+  ammoCapacityLabel.textContent = String(capacity);
+  ammoDisplay.classList.toggle('ammo-low', ammo <= Math.max(1, Math.ceil(capacity * .2)));
+  ammoDisplay.classList.toggle('is-reloading', isReloading && reloadWeapon === selectedWeapon);
+  reloadStatus.textContent = isReloading && reloadWeapon === selectedWeapon ? 'ĐANG NẠP ĐẠN…' : ammo === 0 ? 'NHẤN R ĐỂ NẠP' : '';
+}
 
 function updateAimUI() {
   const scoped = aiming && weapons[selectedWeapon].category === 'Sniper Rifles';
@@ -397,18 +448,43 @@ function updateAimUI() {
   scopeOverlay.setAttribute('aria-hidden', String(!scoped));
 }
 
+function saveLoadout() {
+  try {
+    localStorage.setItem('outpost-loadout', JSON.stringify({
+      primary: weapons[equippedSlots.primary].name,
+      pistol: weapons[equippedSlots.pistol].name
+    }));
+  } catch {
+    // Keep the current two-slot loadout for this session when storage is unavailable.
+  }
+}
+
 function selectWeapon(index) {
-  if (!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
+  if (!weapons[index] || !ownedWeapons.has(weapons[index].name) || !Object.values(equippedSlots).includes(index)) return;
+  if (selectedWeapon !== index && isReloading) {
+    isReloading = false;
+    reloadTimer = 0;
+    reloadWeapon = -1;
+  }
   selectedWeapon = index;
+  activeWeaponSlot = weapons[index].category === 'Pistols' ? 'pistol' : 'primary';
   weaponModel.clear();
   weaponModel.position.set(0, 0, 0);
   buildWeaponModel(weapons[selectedWeapon]);
-  const ownedIndex = weapons.filter((weapon) => ownedWeapons.has(weapon.name)).findIndex((weapon) => weapon.name === weapons[selectedWeapon].name);
-  const label = `${ownedIndex + 1} / ${weapons[selectedWeapon].name}`;
+  const label = `${activeWeaponSlot === 'primary' ? 1 : 2} / ${weapons[selectedWeapon].name}`;
   weaponLabel.textContent = label;
-  armoryStatus.textContent = `${weapons[selectedWeapon].name} ĐANG ĐƯỢC TRANG BỊ`;
+  armoryStatus.textContent = `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}`;
   updateAimUI();
+  updateAmmoUI();
   renderArmory();
+}
+
+function equipWeapon(index) {
+  if (!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
+  const slot = weapons[index].category === 'Pistols' ? 'pistol' : 'primary';
+  equippedSlots[slot] = index;
+  saveLoadout();
+  selectWeapon(index);
 }
 
 function renderArmory() {
@@ -418,16 +494,19 @@ function renderArmory() {
     section.className = 'armory-category';
     const heading = document.createElement('h3');
     heading.textContent = categoryLabels[category];
-    const items = weapons.filter((weapon) => weapon.category === category);
+    const items = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => weapon.category === category);
     const count = document.createElement('span');
     count.textContent = `${items.length} ITEMS`;
     heading.append(count);
     section.append(heading);
     const list = document.createElement('div');
     list.className = 'armory-list';
-    for (const weapon of items) {
+    for (const { weapon, index } of items) {
       const card = document.createElement('article');
-      card.className = `weapon-card${weapons[selectedWeapon].name === weapon.name ? ' equipped' : ''}`;
+      const isEquipped = Object.values(equippedSlots).includes(index);
+      const isSelected = selectedWeapon === index;
+      const slotLabel = weapon.category === 'Pistols' ? 'Ô SÚNG LỤC' : 'Ô CHÍNH';
+      card.className = `weapon-card${isEquipped ? ' equipped' : ''}`;
       card.dataset.category = category;
       const icon = document.createElement('span');
       icon.className = 'weapon-icon';
@@ -439,16 +518,15 @@ function renderArmory() {
       name.textContent = weapon.name;
       const meta = document.createElement('span');
       meta.className = 'weapon-meta';
-      meta.textContent = `${Math.round(60 / weapon.cooldown)} RPM · $${weapon.cost.toLocaleString('en-US')}`;
+      meta.textContent = `${magazineCapacity(weapon)} VIÊN / BĂNG · $${weapon.cost.toLocaleString('en-US')}`;
       info.append(name, meta);
       const button = document.createElement('button');
       button.className = 'weapon-action';
       button.type = 'button';
       button.dataset.weapon = weapon.name;
       const isOwned = ownedWeapons.has(weapon.name);
-      const isEquipped = weapons[selectedWeapon].name === weapon.name;
-      button.textContent = isEquipped ? 'ĐANG DÙNG' : isOwned ? 'TRANG BỊ' : `MUA · $${weapon.cost.toLocaleString('en-US')}`;
-      button.disabled = isEquipped;
+      button.textContent = isSelected ? 'ĐANG DÙNG' : isEquipped ? `CHỌN ${slotLabel}` : isOwned ? `TRANG BỊ ${slotLabel}` : `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}`;
+      button.disabled = isSelected;
       card.append(icon, info, button);
       list.append(card);
     }
@@ -479,11 +557,25 @@ function buyOrEquipWeapon(name) {
   } catch {
     // Keep the purchase for the current session when storage is unavailable.
   }
-  selectWeapon(index);
-  armoryStatus.textContent = `${name} ĐÃ ĐƯỢC TRANG BỊ`;
+  equipWeapon(index);
 }
 
-buildWeaponModel(weapons[0]);
+function startReload() {
+  if (!started || armoryOpen || isReloading) return;
+  const weapon = weapons[selectedWeapon];
+  const capacity = magazineCapacity(weapon);
+  if ((magazineAmmo.get(weapon.name) ?? capacity) >= capacity) return;
+  isReloading = true;
+  reloadTimer = reloadDuration;
+  reloadWeapon = selectedWeapon;
+  shooting = false;
+  updateAmmoUI();
+}
+
+buildWeaponModel(weapons[selectedWeapon]);
+weaponLabel.textContent = `1 / ${weapons[selectedWeapon].name}`;
+armoryStatus.textContent = `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}`;
+updateAmmoUI();
 renderArmory();
 
 const keys = new Set();
@@ -506,6 +598,15 @@ const bulletMaterial = new THREE.MeshStandardMaterial({
 });
 
 function shoot() {
+  if (!started || armoryOpen || isReloading) return;
+  const weapon = weapons[selectedWeapon];
+  const capacity = magazineCapacity(weapon);
+  const ammo = magazineAmmo.get(weapon.name) ?? capacity;
+  if (ammo <= 0) {
+    shooting = false;
+    updateAmmoUI();
+    return;
+  }
   const direction = new THREE.Vector3();
   const origin = new THREE.Vector3();
   camera.getWorldDirection(direction);
@@ -515,12 +616,13 @@ function shoot() {
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
-  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapons[selectedWeapon].velocity), life: 1.1 });
-  const weapon = weapons[selectedWeapon];
+  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1 });
+  magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
   pitch = THREE.MathUtils.clamp(pitch + weapon.recoil * (aiming ? .9 : 1), -.9, 1.35);
   weaponModel.position.y = Math.min(weaponModel.position.y + .05 + weapon.recoil * .18, .5);
   weaponModel.position.z = Math.min(weaponModel.position.z + .055 + weapon.recoil * .1, .3);
+  updateAmmoUI();
 }
 
 function rotateCamera(deltaX, deltaY) {
@@ -537,13 +639,13 @@ function toggleCrouch() {
   document.querySelector('#crouch-toggle').setAttribute('aria-pressed', String(crouched));
 }
 
+function switchWeaponSlot(slot) {
+  if (!started || armoryOpen || !['primary', 'pistol'].includes(slot)) return;
+  selectWeapon(equippedSlots[slot]);
+}
+
 function cycleWeapon(direction) {
-  const availableWeapons = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => ownedWeapons.has(weapon.name));
-  const currentSlot = availableWeapons.findIndex(({ index }) => index === selectedWeapon);
-  if (started && !armoryOpen && availableWeapons.length) {
-    const next = (currentSlot + direction + availableWeapons.length) % availableWeapons.length;
-    selectWeapon(availableWeapons[next].index);
-  }
+  switchWeaponSlot(activeWeaponSlot === 'primary' ? 'pistol' : 'primary');
 }
 
 function handleArmoryClick(event) {
@@ -568,12 +670,14 @@ addEventListener('keydown', (event) => {
     event.preventDefault();
     return;
   }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space", "ControlLeft", "ControlRight"].includes(event.code)) event.preventDefault();
-  if (event.code.startsWith('Digit') && Number(event.code.slice(5)) >= 1 && Number(event.code.slice(5)) <= 4) {
-    const availableWeapons = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => ownedWeapons.has(weapon.name));
-    const slot = Number(event.code.slice(5)) - 1;
-    if (started && availableWeapons[slot]) selectWeapon(availableWeapons[slot].index);
+  if (event.code === 'KeyR' && !event.repeat) {
+    event.preventDefault();
+    startReload();
+    return;
   }
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space", "ControlLeft", "ControlRight"].includes(event.code)) event.preventDefault();
+  if (event.code === 'Digit1') switchWeaponSlot('primary');
+  if (event.code === 'Digit2') switchWeaponSlot('pistol');
   if ((event.code === 'KeyC' || event.code === 'ControlLeft' || event.code === 'ControlRight') && !event.repeat) toggleCrouch();
   if (event.code === 'Space' && started && grounded && !event.repeat) {
     verticalVelocity = 6.4;
@@ -664,6 +768,17 @@ function animate() {
   if (Math.abs(nextFov - camera.fov) > .01) {
     camera.fov = nextFov;
     camera.updateProjectionMatrix();
+  }
+  if (isReloading) {
+    reloadTimer -= delta;
+    if (reloadTimer <= 0) {
+      const reloadTarget = weapons[reloadWeapon];
+      magazineAmmo.set(reloadTarget.name, magazineCapacity(reloadTarget));
+      isReloading = false;
+      reloadTimer = 0;
+      reloadWeapon = -1;
+      updateAmmoUI();
+    }
   }
   shotCooldown = Math.max(0, shotCooldown - delta);
   if (started && shooting && shotCooldown <= 0) shoot();

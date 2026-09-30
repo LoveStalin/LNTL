@@ -40,6 +40,15 @@ body { font-family: "DM Mono", monospace; }
 .scope-mark-left, .scope-mark-right { top: calc(50% - 1px); width: 9px; height: 2px; }
 .scope-mark-left { left: 17%; }
 .scope-mark-right { right: 17%; }
+.ammo-display { position: fixed; z-index: 3; right: 36px; bottom: 145px; min-width: 124px; padding: 10px 13px; border: 1px solid rgba(237,240,232,.17); background: rgba(20,25,22,.78); backdrop-filter: blur(8px); text-align: right; pointer-events: none; }
+.ammo-weapon { display: block; color: #b8c1b5; font: 700 13px "Barlow Condensed", sans-serif; letter-spacing: .8px; }
+.ammo-display strong { display: block; margin: 1px 0; color: var(--ink); font: 700 27px/1 "Barlow Condensed", sans-serif; }
+.ammo-display strong i { padding: 0 4px; color: var(--muted); font: normal 15px "DM Mono", monospace; }
+.ammo-display small { display: block; color: var(--muted); font-size: 8px; letter-spacing: .6px; }
+.ammo-display small b { padding-left: 3px; color: var(--acid); font-size: 12px; }
+.ammo-display em { display: block; min-height: 11px; margin-top: 4px; color: var(--acid); font: normal 8px "DM Mono", monospace; letter-spacing: .5px; }
+.ammo-display.ammo-low strong { color: var(--red); }
+.ammo-display.is-reloading { border-color: rgba(200,243,106,.5); }
 .bottom { position: fixed; z-index: 3; left: 0; right: 0; bottom: 0; padding: 0 36px 27px; display: flex; align-items: end; justify-content: space-between; pointer-events: none; }
 .operator { display: flex; align-items: center; gap: 13px; min-width: 198px; }
 .portrait { width: 43px; height: 43px; border: 1px solid rgba(200,243,106,.58); display: grid; place-items: center; color: var(--acid); background: rgba(26,34,29,.82); font: 700 19px "Barlow Condensed", sans-serif; }
@@ -124,6 +133,8 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
   .game-action { min-height: 24px; padding: 2px 5px; font-size: 8px; }
   kbd { min-width: 18px; height: 18px; padding: 0 3px; font-size: 8px; }
   .status { min-width: 0; font-size: 8px; }
+  .ammo-display { right: 17px; bottom: 156px; min-width: 105px; padding: 7px 9px; }
+  .ammo-display strong { font-size: 23px; }
   .mobile-note { display: block; margin-top: 8px !important; color: var(--acid) !important; }
   .armory { padding: 10px; }
   .armory-panel { max-height: 96vh; padding: 16px; }
