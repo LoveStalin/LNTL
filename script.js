@@ -147,49 +147,160 @@ cube(viewModel, mats.vest, -.05, -.34, -.82, .2, .16, .22, false);
 const weaponModel = new THREE.Group();
 viewModel.add(weaponModel);
 const weapons = [
-  { name: 'CARBINE', cooldown: .16, build: () => {
-    cube(weaponModel, mats.metal, .24, -.2, -.77, .19, .17, .48, false);
-    cube(weaponModel, mats.trim, .24, -.21, -1.13, .15, .13, .43, false);
-    cube(weaponModel, mats.metal, .24, -.19, -1.51, .055, .055, .48, false);
-    cube(weaponModel, mats.trim, .24, -.08, -.76, .08, .1, .22, false);
-    cube(weaponModel, mats.metal, .24, -.42, -.82, .13, .28, .17, false);
-    cube(weaponModel, mats.metal, .24, -.12, -.67, .12, .08, .17, false);
-    cube(weaponModel, mats.accent, .24, -.065, -.67, .07, .025, .1, false);
-  }},
-  { name: 'PISTOL', cooldown: .28, build: () => {
-    cube(weaponModel, mats.metal, .24, -.24, -.79, .16, .19, .38, false);
-    cube(weaponModel, mats.trim, .24, -.2, -1.08, .12, .12, .28, false);
-    cube(weaponModel, mats.metal, .24, -.4, -.77, .11, .24, .13, false);
-    cube(weaponModel, mats.accent, .24, -.14, -.66, .07, .025, .08, false);
-  }},
-  { name: 'SHOTGUN', cooldown: .62, build: () => {
-    cube(weaponModel, mats.metal, .24, -.2, -.77, .2, .19, .47, false);
-    cube(weaponModel, mats.trim, .24, -.2, -1.15, .16, .16, .5, false);
-    cube(weaponModel, mats.metal, .24, -.19, -1.58, .085, .085, .56, false);
-    cube(weaponModel, mats.trim, .24, -.4, -.78, .15, .26, .2, false);
-    cube(weaponModel, mats.accent, .24, -.08, -.68, .08, .04, .12, false);
-  }},
-  { name: 'SMG', cooldown: .09, build: () => {
-    cube(weaponModel, mats.metal, .24, -.21, -.78, .18, .16, .4, false);
-    cube(weaponModel, mats.trim, .24, -.2, -1.06, .13, .12, .3, false);
-    cube(weaponModel, mats.metal, .24, -.19, -1.34, .045, .045, .28, false);
-    cube(weaponModel, mats.metal, .24, -.4, -.79, .11, .28, .12, false);
-    cube(weaponModel, mats.trim, .24, -.06, -.71, .1, .08, .16, false);
-  }}
+  { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, owned: true },
+  { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58 },
+  { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62 },
+  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68 },
+  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62 },
+  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82 },
+  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90 },
+  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115 },
+  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135 },
+  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88 },
+  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84 },
+  { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65 },
+  { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62 },
+  { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60 },
+  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92 },
+  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55 }
 ];
+let savedWeapons = [];
+try {
+  const storedWeapons = JSON.parse(localStorage.getItem('outpost-owned-weapons') || '[]');
+  if (Array.isArray(storedWeapons)) savedWeapons = storedWeapons;
+} catch {
+  savedWeapons = [];
+}
+const ownedWeapons = new Set([
+  ...weapons.filter((weapon) => weapon.owned).map((weapon) => weapon.name),
+  ...savedWeapons.filter((name) => weapons.some((weapon) => weapon.name === name))
+]);
+const weaponCategories = ['Shotguns', 'SMGs', 'Rifles', 'Sniper Rifles', 'Heavy Weapons', 'Pistols'];
+const categoryLabels = {
+  'Shotguns': 'SHOTGUNS',
+  'SMGs': 'SUBMACHINE GUNS',
+  'Rifles': 'RIFLES',
+  'Sniper Rifles': 'SNIPER RIFLES',
+  'Heavy Weapons': 'HEAVY WEAPONS',
+  'Pistols': 'PISTOLS'
+};
+
+function buildWeaponModel(weapon) {
+  const pistol = weapon.category === 'Pistols';
+  const shotgun = weapon.category === 'Shotguns' || weapon.name === 'Sawed-off';
+  const sniper = weapon.category === 'Sniper Rifles';
+  const heavy = weapon.category === 'Heavy Weapons';
+  const smg = weapon.category === 'SMGs';
+  const bodyWidth = pistol ? .16 : heavy ? .25 : shotgun ? .21 : .19;
+  const bodyHeight = pistol ? .18 : heavy ? .22 : .16;
+  const bodyLength = pistol ? .35 : sniper || heavy ? .62 : shotgun ? .48 : .43;
+  cube(weaponModel, mats.metal, .24, -.22, -.8, bodyWidth, bodyHeight, bodyLength, false);
+  cube(weaponModel, mats.trim, .24, -.22, -1.08, pistol ? .12 : .15, .12, sniper || heavy ? .5 : .34, false);
+  cube(weaponModel, mats.metal, .24, -.2, sniper ? -1.64 : shotgun ? -1.48 : -1.4, sniper ? .045 : shotgun ? .075 : .05, sniper ? .045 : shotgun ? .075 : .05, sniper ? .72 : shotgun ? .42 : .36, false);
+  cube(weaponModel, mats.metal, .24, pistol ? -.4 : -.43, -.81, pistol ? .11 : .13, pistol ? .24 : .3, pistol ? .13 : .16, false);
+  if (!pistol) {
+    cube(weaponModel, mats.trim, .24, -.08, -.78, .09, .09, .22, false);
+    if (heavy) cube(weaponModel, mats.metal, .24, -.48, -1.06, .14, .22, .22, false);
+    else if (smg) cube(weaponModel, mats.trim, .24, -.4, -.8, .12, .24, .13, false);
+    else if (shotgun) cube(weaponModel, mats.trim, .24, -.17, -1.03, .13, .09, .27, false);
+    else cube(weaponModel, mats.metal, .24, -.34, -.78, .11, .2, .14, false);
+  }
+  cube(weaponModel, mats.accent, .24, -.08, -.68, .07, .025, .08, false);
+}
+
 let selectedWeapon = 0;
 const weaponLabel = document.querySelector('#weapon-label');
 const weaponButton = document.querySelector('#weapon-toggle');
+const armory = document.querySelector('#armory');
+const armoryCategories = document.querySelector('#armory-categories');
+const armoryStatus = document.querySelector('#armory-status');
+let armoryOpen = false;
 
 function selectWeapon(index) {
-  selectedWeapon = (index + weapons.length) % weapons.length;
+  if (!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
+  selectedWeapon = index;
   weaponModel.clear();
-  weapons[selectedWeapon].build();
-  const label = `${selectedWeapon + 1} / ${weapons[selectedWeapon].name}`;
+  buildWeaponModel(weapons[selectedWeapon]);
+  const ownedIndex = weapons.filter((weapon) => ownedWeapons.has(weapon.name)).findIndex((weapon) => weapon.name === weapons[selectedWeapon].name);
+  const label = `${ownedIndex + 1} / ${weapons[selectedWeapon].name}`;
   weaponLabel.textContent = label;
+  armoryStatus.textContent = `${weapons[selectedWeapon].name} ĐANG ĐƯỢC TRANG BỊ`;
+  renderArmory();
 }
 
-selectWeapon(0);
+function renderArmory() {
+  armoryCategories.replaceChildren();
+  for (const category of weaponCategories) {
+    const section = document.createElement('section');
+    section.className = 'armory-category';
+    const heading = document.createElement('h3');
+    heading.textContent = categoryLabels[category];
+    const items = weapons.filter((weapon) => weapon.category === category);
+    const count = document.createElement('span');
+    count.textContent = `${items.length} ITEMS`;
+    heading.append(count);
+    section.append(heading);
+    const list = document.createElement('div');
+    list.className = 'armory-list';
+    for (const weapon of items) {
+      const card = document.createElement('article');
+      card.className = `weapon-card${weapons[selectedWeapon].name === weapon.name ? ' equipped' : ''}`;
+      card.dataset.category = category;
+      const icon = document.createElement('span');
+      icon.className = 'weapon-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      const info = document.createElement('span');
+      info.className = 'weapon-info';
+      const name = document.createElement('strong');
+      name.className = 'weapon-name';
+      name.textContent = weapon.name;
+      const meta = document.createElement('span');
+      meta.className = 'weapon-meta';
+      meta.textContent = `${Math.round(60 / weapon.cooldown)} RPM · $${weapon.cost.toLocaleString('en-US')}`;
+      info.append(name, meta);
+      const button = document.createElement('button');
+      button.className = 'weapon-action';
+      button.type = 'button';
+      button.dataset.weapon = weapon.name;
+      const isOwned = ownedWeapons.has(weapon.name);
+      const isEquipped = weapons[selectedWeapon].name === weapon.name;
+      button.textContent = isEquipped ? 'ĐANG DÙNG' : isOwned ? 'TRANG BỊ' : `MUA · $${weapon.cost.toLocaleString('en-US')}`;
+      button.disabled = isEquipped;
+      card.append(icon, info, button);
+      list.append(card);
+    }
+    section.append(list);
+    armoryCategories.append(section);
+  }
+}
+
+function openArmory(open) {
+  armoryOpen = open;
+  armory.classList.toggle('hidden', !open);
+  armory.setAttribute('aria-hidden', String(!open));
+  shooting = false;
+  keys.clear();
+  if (open && document.pointerLockElement) document.exitPointerLock();
+  canvas.style.cursor = open ? 'default' : (document.pointerLockElement === canvas ? 'none' : 'default');
+}
+
+function buyOrEquipWeapon(name) {
+  const index = weapons.findIndex((weapon) => weapon.name === name);
+  if (index < 0) return;
+  const weapon = weapons[index];
+  if (!ownedWeapons.has(name)) ownedWeapons.add(name);
+  try {
+    localStorage.setItem('outpost-owned-weapons', JSON.stringify([...ownedWeapons]));
+  } catch {
+    // Keep the purchase for the current session when storage is unavailable.
+  }
+  selectWeapon(index);
+  armoryStatus.textContent = `${name} ĐÃ ĐƯỢC TRANG BỊ`;
+}
+
+buildWeaponModel(weapons[0]);
+renderArmory();
 
 const keys = new Set();
 let dragging = false;
@@ -220,7 +331,7 @@ function shoot() {
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
-  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(75), life: 1.1 });
+  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapons[selectedWeapon].velocity), life: 1.1 });
   shotCooldown = weapons[selectedWeapon].cooldown;
 }
 
@@ -239,7 +350,17 @@ function toggleCrouch() {
 }
 
 function cycleWeapon(direction) {
-  if (started) selectWeapon(selectedWeapon + direction);
+  const availableWeapons = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => ownedWeapons.has(weapon.name));
+  const currentSlot = availableWeapons.findIndex(({ index }) => index === selectedWeapon);
+  if (started && !armoryOpen && availableWeapons.length) {
+    const next = (currentSlot + direction + availableWeapons.length) % availableWeapons.length;
+    selectWeapon(availableWeapons[next].index);
+  }
+}
+
+function handleArmoryClick(event) {
+  const button = event.target.closest('[data-weapon]');
+  if (button) buyOrEquipWeapon(button.dataset.weapon);
 }
 
 const intro = document.querySelector('#intro');
@@ -249,9 +370,21 @@ document.querySelector('#enter').addEventListener('click', () => {
   canvas.focus();
 });
 addEventListener('keydown', (event) => {
+  if (event.code === 'KeyB' && started && !event.repeat) {
+    event.preventDefault();
+    openArmory(!armoryOpen);
+    return;
+  }
+  if (armoryOpen) {
+    if (event.code === 'Escape') openArmory(false);
+    event.preventDefault();
+    return;
+  }
   if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space", "ControlLeft", "ControlRight"].includes(event.code)) event.preventDefault();
   if (event.code.startsWith('Digit') && Number(event.code.slice(5)) >= 1 && Number(event.code.slice(5)) <= 4) {
-    selectWeapon(Number(event.code.slice(5)) - 1);
+    const availableWeapons = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => ownedWeapons.has(weapon.name));
+    const slot = Number(event.code.slice(5)) - 1;
+    if (started && availableWeapons[slot]) selectWeapon(availableWeapons[slot].index);
   }
   if ((event.code === 'KeyC' || event.code === 'ControlLeft' || event.code === 'ControlRight') && !event.repeat) toggleCrouch();
   if (event.code === 'Space' && started && grounded && !event.repeat) {
@@ -263,8 +396,10 @@ addEventListener('keydown', (event) => {
 addEventListener('keyup', (event) => keys.delete(event.code));
 document.querySelector('#crouch-toggle').addEventListener('click', toggleCrouch);
 weaponButton.addEventListener('click', () => cycleWeapon(1));
+armoryCategories.addEventListener('click', handleArmoryClick);
+document.querySelector('#armory-close').addEventListener('click', () => openArmory(false));
 document.addEventListener('wheel', (event) => {
-  if (started) {
+  if (started && !armoryOpen) {
     event.preventDefault();
     cycleWeapon(event.deltaY > 0 ? 1 : -1);
   }
