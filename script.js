@@ -270,6 +270,26 @@ for (const [x, z] of [[-10.7, 5.4], [10.7, -5.4]]) {
   for (let stripe = -1.5; stripe <= 1.5; stripe += .75) cube(scene, mats.accent, x, .52, z + stripe, .53, .13, .32);
 }
 
+const safeZoneBounds = { minX: -21.1, maxX: 21.1, minZ: -6.1, maxZ: 6.1, maxHeight: 1.8 };
+const safeZone = new THREE.Mesh(
+  new THREE.BoxGeometry(
+    safeZoneBounds.maxX - safeZoneBounds.minX,
+    .08,
+    safeZoneBounds.maxZ - safeZoneBounds.minZ
+  ),
+  new THREE.MeshBasicMaterial({ color: '#37ff91', transparent: true, opacity: .11, depthWrite: false, side: THREE.DoubleSide })
+);
+safeZone.position.set(0, .17, 0);
+safeZone.renderOrder = 1;
+scene.add(safeZone);
+const safeZoneOutline = new THREE.LineSegments(
+  new THREE.EdgesGeometry(safeZone.geometry),
+  new THREE.LineBasicMaterial({ color: '#56ff9e', transparent: true, opacity: .62, depthWrite: false })
+);
+safeZoneOutline.position.copy(safeZone.position);
+safeZoneOutline.renderOrder = 2;
+scene.add(safeZoneOutline);
+
 const playerRadius = .34;
 const playerHeight = 1.62;
 function canOccupy(x, z, feetY) {
@@ -280,6 +300,12 @@ function canOccupy(x, z, feetY) {
     if (Math.hypot(x - closestX, z - closestZ) < playerRadius) return false;
   }
   return true;
+}
+
+function isInSafeZone(position = player.position) {
+  return position.y <= safeZoneBounds.maxHeight &&
+    position.x >= safeZoneBounds.minX && position.x <= safeZoneBounds.maxX &&
+    position.z >= safeZoneBounds.minZ && position.z <= safeZoneBounds.maxZ;
 }
 
 function getSurfaceAt(x, z, feetY) {
@@ -505,12 +531,20 @@ const botModeLabel = document.querySelector('#bot-mode-label');
 const settingsPanel = document.querySelector('#training-settings');
 const settingsOpenButton = document.querySelector('#settings-open');
 const balanceLabel = document.querySelector('#armory-balance-value');
+const safeZoneNotice = document.querySelector('#safe-zone-notice');
 let armoryOpen = false;
 let aiming = false;
 let isReloading = false;
 let reloadTimer = 0;
 let reloadWeapon = -1;
 const reloadDuration = 1.35;
+let safeZoneNoticeTimer = 0;
+
+function showSafeZoneNotice() {
+  safeZoneNotice.classList.add('visible');
+  clearTimeout(safeZoneNoticeTimer);
+  safeZoneNoticeTimer = setTimeout(() => safeZoneNotice.classList.remove('visible'), 2300);
+}
 
 function updateBalanceUI() {
   balanceLabel.textContent = playerBalance.toLocaleString('vi-VN');
@@ -970,11 +1004,11 @@ function updateBot(delta) {
   const surface = getSurfaceAt(bot.position.x, bot.position.z, bot.position.y);
   bot.position.y = surface.height;
   botShotTimer -= delta;
-  if (distance < 32 && botShotTimer <= 0 && firstObstacleDistance(botEye, target) === Infinity) {
+  if (distance < 32 && !isInSafeZone(player.position) && botShotTimer <= 0 && firstObstacleDistance(botEye, target) === Infinity) {
     fireBot(target);
     botShotTimer = .88 + Math.random() * .42;
     botStateLabel.textContent = 'ĐANG GIAO TRANH';
-  } else if (distance >= 32 || firstObstacleDistance(botEye, target) !== Infinity) {
+  } else if (distance >= 32 || isInSafeZone(player.position) || firstObstacleDistance(botEye, target) !== Infinity) {
     botStateLabel.textContent = 'ĐANG TRUY TÌM';
   }
 }
@@ -1045,6 +1079,10 @@ addEventListener('keydown', (event) => {
   if (event.code === 'KeyW' && event.ctrlKey) event.preventDefault();
   if (event.code === 'KeyB' && started && !event.repeat) {
     event.preventDefault();
+    if (!armoryOpen && !isInSafeZone()) {
+      showSafeZoneNotice();
+      return;
+    }
     openArmory(!armoryOpen);
     return;
   }
@@ -1183,7 +1221,7 @@ function animate() {
       closestPoint.distanceTo(targetPosition) <= hitRadius && hitDistance <= obstacleDistance;
     if (hitTarget) {
       if (bullet.owner === 'player') damageBot(bullet.damage);
-      else damagePlayer(bullet.damage);
+      else if (!isInSafeZone(player.position)) damagePlayer(bullet.damage);
       scene.remove(bullet.mesh);
       bullets.splice(i, 1);
       continue;

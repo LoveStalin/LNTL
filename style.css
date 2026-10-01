@@ -40,6 +40,8 @@ body { font-family: "DM Mono", monospace; }
 .scope-mark-left, .scope-mark-right { top: calc(50% - 1px); width: 9px; height: 2px; }
 .scope-mark-left { left: 17%; }
 .scope-mark-right { right: 17%; }
+.safe-zone-notice { position: fixed; z-index: 6; left: 50%; bottom: 116px; transform: translate(-50%, 10px); padding: 10px 14px; border: 1px solid rgba(86,255,158,.48); background: rgba(12,28,20,.9); color: #9dffc2; font-size: 9px; letter-spacing: .7px; opacity: 0; visibility: hidden; transition: opacity .18s ease, transform .18s ease, visibility .18s ease; pointer-events: none; text-align: center; }
+.safe-zone-notice.visible { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
 .combat-card { position: fixed; z-index: 3; top: 92px; width: 174px; padding: 10px 12px; border: 1px solid rgba(237,240,232,.18); background: rgba(20,25,22,.8); backdrop-filter: blur(8px); pointer-events: none; }
 .combat-card[hidden], .training-settings[hidden] { display: none !important; }
 .combat-card > span { display: block; color: #bac3b8; font-size: 8px; letter-spacing: 1px; }
