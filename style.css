@@ -186,3 +186,15 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
   .armory-footer { align-items: center; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+
+
+/* Multiplayer entry panel */
+.multiplayer-entry { margin: 18px 0; padding: 14px; border: 1px solid rgba(200,243,106,.28); background: rgba(14,18,16,.58); text-align: left; }
+.mp-label { display:block; margin:10px 0 5px; color:var(--muted); font-size:10px; letter-spacing:1px; }
+.mp-input { width:100%; padding:11px 12px; border:1px solid rgba(237,240,232,.2); background:#111612; color:var(--ink); font:inherit; outline:none; }
+.mp-input:focus { border-color:var(--acid); }
+.mp-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+#mp-status,#mp-room-info { font-size:11px; line-height:1.5; overflow-wrap:anywhere; color:var(--muted); }
+#mp-status.mp-error { color:var(--red); }
+.mp-actions button { min-width:0; padding:10px 7px; font-size:10px; }
+@media(max-width:560px) { .multiplayer-entry { margin:12px 0; padding:10px; } }
