@@ -28,8 +28,7 @@
   <p>Trang kiểm thử riêng. Không thay đổi gameplay trong <code>script.js</code>. Mỗi tab hoặc thiết bị có thể dùng một nickname khác nhau.</p>
 
   <section class="panel">
-    <label for="backend">Backend Worker URL (ví dụ https://lntl-multiplayer.ten-tai-khoan.workers.dev)</label>
-    <input id="backend" placeholder="https://your-worker.workers.dev" autocomplete="url">
+    <p class="muted">Backend multiplayer được kết nối tự động.</p>
     <div class="grid">
       <div><label for="nickname">Nickname (1–20 ký tự)</label><input id="nickname" maxlength="20" placeholder="Sigma78"></div>
       <div><label for="roomCode">Mã phòng để tham gia</label><input id="roomCode" maxlength="6" placeholder="AB12CD" autocapitalize="characters"></div>
@@ -54,7 +53,6 @@
 </main>
 <script type="module">
   const $ = (selector) => document.querySelector(selector);
-  const backendInput = $("#backend");
   const nicknameInput = $("#nickname");
   const roomCodeInput = $("#roomCode");
   const statusNode = $("#status");
@@ -71,7 +69,6 @@
   let currentRoom = null;
   let myPlayerId = null;
 
-  backendInput.value = localStorage.getItem("lntl-mp-backend") || "";
   nicknameInput.value = localStorage.getItem("lntl-mp-nickname") || "";
 
   function setStatus(message, isError = false) {
@@ -79,11 +76,12 @@
     statusNode.classList.toggle("error", isError);
   }
 
+  // Backend deployed for the LNTL multiplayer prototype.
+  // Change this constant only if the Worker URL changes.
+  const BACKEND_URL = "https://lntl-multiplayer.thanhnguyenxuan917.workers.dev";
+
   function getBackend() {
-    const value = backendInput.value.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//i.test(value)) throw new Error("Nhập URL Worker đầy đủ, bắt đầu bằng https://.");
-    localStorage.setItem("lntl-mp-backend", value);
-    return value;
+    return BACKEND_URL;
   }
 
   function getNickname() {
