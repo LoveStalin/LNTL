@@ -47,6 +47,22 @@
       <h1>VÀO KHU VỰC<br>HUẤN LUYỆN</h1>
       <p>Bạn xuất hiện phía sau căn nhà bên trái. Bật luyện tập với Bot trong Cài đặt để đối thủ xuất hiện phía sau căn nhà bên phải.</p>
       <p class="mobile-note">Thiết bị cảm ứng: kéo trên màn hình để xoay góc nhìn.</p>
+      <div class="multiplayer-entry">
+        <div class="settings-heading"><div><span>CHẾ ĐỘ CHƠI</span><strong>Multiplayer</strong></div><span class="mode-badge">BETA</span></div>
+        <label class="setting-row" for="multiplayer-mode">
+          <span><strong>Chơi cùng người khác</strong><small>Tạo phòng hoặc tham gia bằng mã phòng.</small></span>
+          <span class="switch"><input id="multiplayer-mode" type="checkbox"><i></i></span>
+        </label>
+        <div id="multiplayer-controls" hidden>
+          <label class="mp-label" for="mp-nickname">NICKNAME</label>
+          <input class="mp-input" id="mp-nickname" maxlength="20" placeholder="Sigma78" autocomplete="nickname">
+          <div class="mp-actions"><button class="settings-done" id="mp-create" type="button">TẠO PHÒNG</button><button class="settings-done" id="mp-join-toggle" type="button">NHẬP MÃ PHÒNG</button></div>
+          <div id="mp-join-row" hidden><label class="mp-label" for="mp-room-code">MÃ PHÒNG</label><input class="mp-input" id="mp-room-code" maxlength="6" placeholder="AB12CD" autocapitalize="characters"><button class="settings-done" id="mp-join" type="button">THAM GIA</button></div>
+          <p id="mp-status" role="status">Chưa kết nối.</p>
+          <p id="mp-room-info" hidden></p>
+          <button class="settings-done" id="mp-disconnect" type="button" hidden>NGẮT KẾT NỐI</button>
+        </div>
+      </div>
       <button class="enter" id="enter">BẮT ĐẦU TUẦN TRA &nbsp; ↗</button>
       <button class="settings-open" id="settings-open" type="button" aria-expanded="false" aria-controls="training-settings">CÀI ĐẶT TRẬN ĐẤU <span>⚙</span></button>
       <section class="training-settings" id="training-settings" hidden>
@@ -71,6 +87,7 @@
       <footer class="armory-footer"><span id="armory-status">CARBINE ĐANG ĐƯỢC TRANG BỊ</span><span><kbd>B</kbd> / <kbd>ESC</kbd> ĐÓNG KHO</span></footer>
     </div>
   </section>
+  <script type="module" src="./multiplayer-client.js"></script>
   <script type="module" src="./script.js"></script>
 </body>
 </html>
