@@ -234,6 +234,26 @@ export class RoomDurableObject {
       return;
     }
 
+    if (message.type === "player:state" && message.state && typeof message.state === "object") {
+      const state = message.state;
+      const x = Number(state.x), y = Number(state.y), z = Number(state.z);
+      const yaw = Number(state.yaw), pitch = Number(state.pitch);
+      if (![x, y, z, yaw, pitch].every(Number.isFinite)) return;
+      // Basic sanity bounds; authoritative movement validation will replace client-trusted positions.
+      if (Math.abs(x) > 30 || y < -2 || y > 12 || Math.abs(z) > 30) return;
+      this.broadcast(room, {
+        type: "player:state",
+        playerId,
+        nickname: room.players.find((entry) => entry.id === playerId)?.nickname ?? "Player",
+        state: { x, y, z, yaw, pitch, at: Date.now() },
+      });
+      return;
+    }
+
+    if (message.type === "ping") {
+      socket.send(JSON.stringify({ type: "pong", at: Date.now() }));
+      return;
+    }
     if (message.type === "ping") {
       socket.send(JSON.stringify({ type: "pong", at: Date.now() }));
       return;
