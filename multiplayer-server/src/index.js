@@ -282,6 +282,7 @@ export class RoomDurableObject {
     room.players = room.players.filter((player) => player.id !== playerId);
     if (room.players.length !== before) {
       await this.ctx.storage.put("room", room);
+      this.broadcast(room, { type: "player:left", playerId });
       this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
     }
   }
