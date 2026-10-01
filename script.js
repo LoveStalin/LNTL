@@ -1102,7 +1102,7 @@ addEventListener('keydown', (event) => {
     startReload();
     return;
   }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space"].includes(event.code)) event.preventDefault();
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space"].includes(event.code)) event.preventDefault();
   if (event.code === 'Digit1') switchWeaponSlot('primary');
   if (event.code === 'Digit2') switchWeaponSlot('pistol');
   if (event.code === 'KeyC' && !event.repeat) toggleCrouch();
@@ -1194,6 +1194,10 @@ function animate() {
   weaponModel.position.z *= weaponSettle;
   player.rotation.y = yaw;
   camera.rotation.x = pitch;
+  const leanInput = Number(keys.has('KeyE')) - Number(keys.has('KeyQ'));
+  const leanAmount = aiming ? .28 : .42;
+  camera.position.x += (leanInput * leanAmount - camera.position.x) * Math.min(1, delta * 9);
+  camera.rotation.z += (leanInput * -.14 - camera.rotation.z) * Math.min(1, delta * 9);
   const targetFov = aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72;
   const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 9, delta);
   if (Math.abs(nextFov - camera.fov) > .01) {
