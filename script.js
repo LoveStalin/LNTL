@@ -630,6 +630,7 @@ function setBotTraining(enabled) {
 
 // Remote player representations for the first in-game multiplayer milestone.
 const remotePlayers = new Map();
+let lastMultiplayerStateAt = 0;
 const remoteUniform = new THREE.MeshStandardMaterial({ color: '#a7c86b', roughness: .82 });
 const remoteVest = new THREE.MeshStandardMaterial({ color: '#374638', roughness: .8 });
 const remoteHead = new THREE.MeshStandardMaterial({ color: '#c49a79', roughness: .85 });
@@ -1393,6 +1394,24 @@ function animate() {
     viewModel.position.y += (0 - viewModel.position.y) * Math.min(1, delta * 12);
   }
   document.querySelector('#clock').textContent = new Date().toLocaleTimeString('vi-VN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+  // Send the local player's world position to the room at 20 updates per second.
+  if (started && window.lntlMultiplayer?.isConnected()) {
+    const now = performance.now();
+    if (now - lastMultiplayerStateAt >= 50) {
+      lastMultiplayerStateAt = now;
+      window.dispatchEvent(new CustomEvent('lntl:send-state', {
+        detail: {
+          x: player.position.x,
+          y: player.position.y,
+          z: player.position.z,
+          yaw,
+          pitch
+        }
+      }));
+    }
+  }
+
   renderer.render(scene, camera);
 }
 animate();
