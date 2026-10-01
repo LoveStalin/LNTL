@@ -973,6 +973,17 @@ function handleArmoryClick(event) {
 }
 
 const intro = document.querySelector('#intro');
+function captureGameShortcuts() {
+  // Capture Ctrl+W where the browser supports Keyboard Lock. C remains the safe crouch key everywhere.
+  const keyboard = navigator.keyboard;
+  if (!keyboard?.lock) return;
+  try {
+    keyboard.lock(['ControlLeft', 'ControlRight', 'KeyW']).catch(() => {});
+  } catch {
+    // Some browsers require fullscreen or do not implement Keyboard Lock.
+  }
+}
+
 settingsOpenButton.addEventListener('click', () => {
   const open = settingsPanel.hidden;
   settingsPanel.hidden = !open;
@@ -989,12 +1000,14 @@ botTrainingToggle.addEventListener('change', () => {
 });
 document.querySelector('#enter').addEventListener('click', () => {
   setBotTraining(botTrainingToggle.checked);
+  captureGameShortcuts();
   started = true;
   intro.classList.add('hidden');
   settingsPanel.hidden = true;
   canvas.focus();
 });
 addEventListener('keydown', (event) => {
+  if (event.code === 'KeyW' && event.ctrlKey) event.preventDefault();
   if (event.code === 'KeyB' && started && !event.repeat) {
     event.preventDefault();
     openArmory(!armoryOpen);
@@ -1010,10 +1023,10 @@ addEventListener('keydown', (event) => {
     startReload();
     return;
   }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space", "ControlLeft", "ControlRight"].includes(event.code)) event.preventDefault();
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight", "Space"].includes(event.code)) event.preventDefault();
   if (event.code === 'Digit1') switchWeaponSlot('primary');
   if (event.code === 'Digit2') switchWeaponSlot('pistol');
-  if ((event.code === 'KeyC' || event.code === 'ControlLeft' || event.code === 'ControlRight') && !event.repeat) toggleCrouch();
+  if (event.code === 'KeyC' && !event.repeat) toggleCrouch();
   if (event.code === 'Space' && started && grounded && !event.repeat) {
     verticalVelocity = 6.4;
     grounded = false;
