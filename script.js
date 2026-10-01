@@ -697,17 +697,19 @@ window.addEventListener('lntl:multiplayer', (event) => {
   if (detail.connected && detail.playerId && detail.room?.players) {
     // Give each player a distinct spawn so remote models never start inside our camera.
     const slot = detail.room.players.findIndex((entry) => entry.id === detail.playerId);
+    // Keep the first test players close together on the same side of the central building.
+    // This makes visibility easy to verify before implementing proper team/map spawn points.
     const spawnSlots = [
-      { x: -19.6, z: 0, yaw: -Math.PI / 2 },
-      { x: 19.6, z: 0, yaw: Math.PI / 2 },
-      { x: 0, z: -20, yaw: 0 },
-      { x: 0, z: 20, yaw: Math.PI },
-      { x: -8, z: -18, yaw: -Math.PI / 4 },
-      { x: 8, z: 18, yaw: Math.PI * 3 / 4 },
-      { x: -8, z: 18, yaw: -Math.PI * 3 / 4 },
-      { x: 8, z: -18, yaw: Math.PI / 4 },
-      { x: -20, z: -8, yaw: -Math.PI / 3 },
-      { x: 20, z: 8, yaw: Math.PI * 2 / 3 }
+      { x: -2.5, z: 9, yaw: Math.PI / 2 },
+      { x: 2.5, z: 9, yaw: -Math.PI / 2 },
+      { x: -5.5, z: 9, yaw: Math.PI / 2 },
+      { x: 5.5, z: 9, yaw: -Math.PI / 2 },
+      { x: -2.5, z: 13, yaw: Math.PI / 2 },
+      { x: 2.5, z: 13, yaw: -Math.PI / 2 },
+      { x: -5.5, z: 13, yaw: Math.PI / 2 },
+      { x: 5.5, z: 13, yaw: -Math.PI / 2 },
+      { x: -8, z: 9, yaw: Math.PI / 2 },
+      { x: 8, z: 9, yaw: -Math.PI / 2 }
     ];
     const spawn = spawnSlots[slot] || spawnSlots[0];
     player.position.set(spawn.x, .1, spawn.z);
