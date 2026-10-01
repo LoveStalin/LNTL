@@ -679,7 +679,32 @@ window.addEventListener('lntl:remote-state', (event) => {
 });
 window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
 window.addEventListener('lntl:multiplayer', (event) => {
-  if (!event.detail?.connected) {
+  const detail = event.detail || {};
+  if (detail.connected && detail.playerId && detail.room?.players) {
+    // Give each player a distinct spawn so remote models never start inside our camera.
+    const slot = detail.room.players.findIndex((entry) => entry.id === detail.playerId);
+    const spawnSlots = [
+      { x: -19.6, z: 0, yaw: -Math.PI / 2 },
+      { x: 19.6, z: 0, yaw: Math.PI / 2 },
+      { x: 0, z: -20, yaw: 0 },
+      { x: 0, z: 20, yaw: Math.PI },
+      { x: -8, z: -18, yaw: -Math.PI / 4 },
+      { x: 8, z: 18, yaw: Math.PI * 3 / 4 },
+      { x: -8, z: 18, yaw: -Math.PI * 3 / 4 },
+      { x: 8, z: -18, yaw: Math.PI / 4 },
+      { x: -20, z: -8, yaw: -Math.PI / 3 },
+      { x: 20, z: 8, yaw: Math.PI * 2 / 3 }
+    ];
+    const spawn = spawnSlots[slot] || spawnSlots[0];
+    player.position.set(spawn.x, .1, spawn.z);
+    yaw = spawn.yaw;
+    player.rotation.y = yaw;
+    pitch = -.025;
+    camera.rotation.x = pitch;
+    verticalVelocity = 0;
+    grounded = true;
+  }
+  if (!detail.connected) {
     for (const id of [...remotePlayers.keys()]) removeRemotePlayer(id);
   }
 });
