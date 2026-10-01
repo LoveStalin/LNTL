@@ -1,0 +1,268 @@
+const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ROOM_CODE_LENGTH = 6;
+const MAX_PLAYERS = 10;
+
+function json(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      ...headers,
+    },
+  });
+}
+
+function corsHeaders() {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "Content-Type",
+    "access-control-max-age": "86400",
+  };
+}
+
+function withCors(response) {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders())) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function makeRoomCode() {
+  const bytes = new Uint8Array(ROOM_CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => ROOM_CODE_ALPHABET[byte % ROOM_CODE_ALPHABET.length]).join("");
+}
+
+function validRoomCode(code) {
+  return new RegExp(`^[${ROOM_CODE_ALPHABET}]{${ROOM_CODE_LENGTH}}$`).test(code);
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+
+    if (url.pathname === "/health") {
+      return withCors(json({ ok: true, service: "lntl-multiplayer", phase: "room-lobby" }));
+    }
+
+    if (url.pathname === "/api/rooms" && request.method === "POST") {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return withCors(json({ error: "Invalid JSON body." }, 400));
+      }
+
+      const nickname = String(body?.nickname ?? "").trim().replace(/\s+/g, " ").slice(0, 20);
+      if (nickname.length < 1) {
+        return withCors(json({ error: "Enter a nickname (1–20 characters)." }, 400));
+      }
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const code = makeRoomCode();
+        const id = env.ROOMS.idFromName(code);
+        const stub = env.ROOMS.get(id);
+        const response = await stub.fetch("https://room.internal/internal/create", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+
+        if (response.status === 201) {
+          return withCors(json({ code, nickname, maxPlayers: MAX_PLAYERS }, 201));
+        }
+        if (response.status !== 409) {
+          return withCors(json({ error: "Could not create room. Try again." }, 500));
+        }
+      }
+
+      return withCors(json({ error: "Could not allocate a unique room code. Try again." }, 503));
+    }
+
+    const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]{6})\/ws$/);
+    if (match && request.method === "GET") {
+      if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+        return withCors(json({ error: "WebSocket upgrade required." }, 426));
+      }
+
+      const code = match[1];
+      if (!validRoomCode(code)) {
+        return withCors(json({ error: "Invalid room code." }, 400));
+      }
+
+      const nickname = (url.searchParams.get("nickname") ?? "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 20);
+      if (!nickname) {
+        return withCors(json({ error: "Enter a nickname (1–20 characters)." }, 400));
+      }
+
+      const id = env.ROOMS.idFromName(code);
+      const stub = env.ROOMS.get(id);
+      return stub.fetch(request);
+    }
+
+    return withCors(json({ error: "Not found." }, 404));
+  },
+};
+
+export class RoomDurableObject {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/internal/create" && request.method === "POST") {
+      const { code } = await request.json().catch(() => ({}));
+      if (!validRoomCode(code)) return json({ error: "Invalid room code." }, 400);
+
+      const existing = await this.ctx.storage.get("room");
+      if (existing) return json({ error: "Room already exists." }, 409);
+
+      const room = {
+        code,
+        createdAt: Date.now(),
+        players: [],
+      };
+      await this.ctx.storage.put("room", room);
+      return json({ ok: true }, 201);
+    }
+
+    if (url.pathname.endsWith("/ws") && request.method === "GET") {
+      if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+        return json({ error: "WebSocket upgrade required." }, 426);
+      }
+
+      const room = await this.ctx.storage.get("room");
+      if (!room) return json({ error: "Room not found. Check the code." }, 404);
+
+      const nickname = (url.searchParams.get("nickname") ?? "").trim().replace(/\s+/g, " ").slice(0, 20);
+      if (!nickname) return json({ error: "Enter a nickname." }, 400);
+
+      const activeSockets = this.ctx.getWebSockets();
+      if (activeSockets.length >= MAX_PLAYERS) {
+        return json({ error: "Room is full (10/10 players)." }, 409);
+      }
+
+      const pair = new WebSocketPair();
+      const client = pair[0];
+      const server = pair[1];
+      const playerId = crypto.randomUUID();
+      const player = {
+        id: playerId,
+        nickname,
+        ready: false,
+        joinedAt: Date.now(),
+      };
+
+      server.serializeAttachment({ playerId });
+      this.ctx.acceptWebSocket(server);
+
+      room.players.push(player);
+      await this.ctx.storage.put("room", room);
+      server.send(JSON.stringify({
+        type: "welcome",
+        playerId,
+        room: this.publicRoom(room),
+      }));
+      this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
+
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    return json({ error: "Not found." }, 404);
+  }
+
+  publicRoom(room) {
+    return {
+      code: room.code,
+      createdAt: room.createdAt,
+      maxPlayers: MAX_PLAYERS,
+      players: room.players.map(({ id, nickname, ready }) => ({ id, nickname, ready })),
+      hostId: room.players[0]?.id ?? null,
+    };
+  }
+
+  broadcast(room, payload) {
+    const message = JSON.stringify(payload);
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(message);
+      } catch {
+        // A closing connection will be removed by webSocketClose/webSocketError.
+      }
+    }
+  }
+
+  async webSocketMessage(socket, rawMessage) {
+    let message;
+    try {
+      message = JSON.parse(rawMessage);
+    } catch {
+      socket.send(JSON.stringify({ type: "error", error: "Invalid message format." }));
+      return;
+    }
+
+    const attachment = socket.deserializeAttachment();
+    const playerId = attachment?.playerId;
+    if (!playerId) return;
+
+    const room = await this.ctx.storage.get("room");
+    if (!room) return;
+
+    if (message.type === "ready" && typeof message.ready === "boolean") {
+      const player = room.players.find((entry) => entry.id === playerId);
+      if (!player) return;
+      player.ready = message.ready;
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
+      return;
+    }
+
+    if (message.type === "ping") {
+      socket.send(JSON.stringify({ type: "pong", at: Date.now() }));
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "error", error: "Unsupported message type." }));
+  }
+
+  async webSocketClose(socket) {
+    await this.removeSocketPlayer(socket);
+  }
+
+  async webSocketError(socket) {
+    await this.removeSocketPlayer(socket);
+  }
+
+  async removeSocketPlayer(socket) {
+    const attachment = socket.deserializeAttachment();
+    const playerId = attachment?.playerId;
+    if (!playerId) return;
+
+    const room = await this.ctx.storage.get("room");
+    if (!room) return;
+
+    const before = room.players.length;
+    room.players = room.players.filter((player) => player.id !== playerId);
+    if (room.players.length !== before) {
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
+    }
+  }
+}
