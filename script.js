@@ -302,7 +302,7 @@ function getSurfaceAt(x, z, feetY) {
 }
 
 const player = new THREE.Group();
-const playerSpawn = new THREE.Vector3(-14, .1, 0);
+const playerSpawn = new THREE.Vector3(-19.2, .1, 4.7);
 player.position.copy(playerSpawn);
 scene.add(player);
 let yaw = -Math.PI / 2;
@@ -313,7 +313,7 @@ camera.rotation.order = 'YXZ';
 
 let botTrainingEnabled = false;
 const bot = new THREE.Group();
-const botSpawn = new THREE.Vector3(14, .1, 0);
+const botSpawn = new THREE.Vector3(19.2, .1, -4.7);
 bot.position.copy(botSpawn);
 bot.rotation.y = Math.PI / 2;
 bot.visible = false;
@@ -409,6 +409,17 @@ const ownedWeapons = new Set([
   ...weapons.filter((weapon) => weapon.owned).map((weapon) => weapon.name),
   ...savedWeapons.filter((name) => weapons.some((weapon) => weapon.name === name))
 ]);
+let savedBalance = 99_999;
+try {
+  const rawBalance = localStorage.getItem('outpost-balance');
+  if (rawBalance !== null) {
+    const storedBalance = Number(rawBalance);
+    if (Number.isFinite(storedBalance) && storedBalance >= 0) savedBalance = storedBalance;
+  }
+} catch {
+  savedBalance = 99_999;
+}
+let playerBalance = savedBalance;
 let savedLoadout = {};
 try {
   const storedLoadout = JSON.parse(localStorage.getItem('outpost-loadout') || '{}');
@@ -493,12 +504,26 @@ const botTrainingToggle = document.querySelector('#bot-training');
 const botModeLabel = document.querySelector('#bot-mode-label');
 const settingsPanel = document.querySelector('#training-settings');
 const settingsOpenButton = document.querySelector('#settings-open');
+const balanceLabel = document.querySelector('#armory-balance-value');
 let armoryOpen = false;
 let aiming = false;
 let isReloading = false;
 let reloadTimer = 0;
 let reloadWeapon = -1;
 const reloadDuration = 1.35;
+
+function updateBalanceUI() {
+  balanceLabel.textContent = playerBalance.toLocaleString('vi-VN');
+}
+
+function saveBalance() {
+  try {
+    localStorage.setItem('outpost-balance', String(playerBalance));
+  } catch {
+    // Keep the current balance for this session when storage is unavailable.
+  }
+  updateBalanceUI();
+}
 
 function updateAmmoUI() {
   const weapon = weapons[selectedWeapon];
@@ -643,8 +668,9 @@ function renderArmory() {
       button.type = 'button';
       button.dataset.weapon = weapon.name;
       const isOwned = ownedWeapons.has(weapon.name);
-      button.textContent = isSelected ? 'ĐANG DÙNG' : isEquipped ? `CHỌN ${slotLabel}` : isOwned ? `TRANG BỊ ${slotLabel}` : `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}`;
-      button.disabled = isSelected;
+      const canAfford = playerBalance >= weapon.cost;
+      button.textContent = isSelected ? 'ĐANG DÙNG' : isEquipped ? `CHỌN ${slotLabel}` : isOwned ? `TRANG BỊ ${slotLabel}` : canAfford ? `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}` : 'KHÔNG ĐỦ TIỀN';
+      button.disabled = isSelected || (!isOwned && !canAfford);
       card.append(icon, info, button);
       list.append(card);
     }
@@ -670,7 +696,15 @@ function buyOrEquipWeapon(name) {
   const index = weapons.findIndex((weapon) => weapon.name === name);
   if (index < 0) return;
   const weapon = weapons[index];
-  if (!ownedWeapons.has(name)) ownedWeapons.add(name);
+  if (!ownedWeapons.has(name)) {
+    if (playerBalance < weapon.cost) {
+      armoryStatus.textContent = `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
+      return;
+    }
+    playerBalance -= weapon.cost;
+    ownedWeapons.add(name);
+    saveBalance();
+  }
   try {
     localStorage.setItem('outpost-owned-weapons', JSON.stringify([...ownedWeapons]));
   } catch {
@@ -694,6 +728,7 @@ function startReload() {
 buildWeaponModel(weapons[selectedWeapon]);
 weaponLabel.textContent = `1 / ${weapons[selectedWeapon].name}`;
 armoryStatus.textContent = `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}`;
+updateBalanceUI();
 updateAmmoUI();
 renderArmory();
 

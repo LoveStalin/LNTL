@@ -44,14 +44,14 @@
     <div class="intro-panel">
       <div class="intro-kicker">OUTPOST 07 &nbsp; / &nbsp; BẢN THỬ NGHIỆM</div>
       <h1>VÀO KHU VỰC<br>HUẤN LUYỆN</h1>
-      <p>Bạn xuất phát trong căn nhà bên trái. Chọn có bot trong Cài đặt để bật trận luyện tập đối kháng.</p>
+      <p>Bạn xuất hiện phía sau căn nhà bên trái. Bật luyện tập với Bot trong Cài đặt để đối thủ xuất hiện phía sau căn nhà bên phải.</p>
       <p class="mobile-note">Thiết bị cảm ứng: kéo trên màn hình để xoay góc nhìn.</p>
       <button class="enter" id="enter">BẮT ĐẦU TUẦN TRA &nbsp; ↗</button>
       <button class="settings-open" id="settings-open" type="button" aria-expanded="false" aria-controls="training-settings">CÀI ĐẶT TRẬN ĐẤU <span>⚙</span></button>
       <section class="training-settings" id="training-settings" hidden>
         <div class="settings-heading"><div><span>CHẾ ĐỘ CHƠI</span><strong>Luyện tập với Bot</strong></div><span class="mode-badge" id="bot-mode-label">KHÔNG</span></div>
         <label class="setting-row" for="bot-training">
-          <span><strong>Bot đối thủ</strong><small>Một bot xuất phát ở căn nhà bên phải, có thể di chuyển và bắn.</small></span>
+          <span><strong>Bot đối thủ</strong><small>Bot xuất hiện phía sau căn nhà bên phải, có thể di chuyển và bắn.</small></span>
           <span class="switch"><input id="bot-training" type="checkbox"><i></i></span>
         </label>
         <button class="settings-done" id="settings-done" type="button">XONG</button>
@@ -63,7 +63,7 @@
     <div class="armory-panel">
       <header class="armory-header">
         <div><div class="armory-kicker">OUTPOST / QUARTERMASTER · LOADOUT 2 SÚNG</div><h2 id="armory-title">KHO VŨ KHÍ</h2><p>Chỉ mang 1 súng chính và 1 súng lục. Trang bị mới sẽ thay thế khẩu cùng ô.</p></div>
-        <div class="armory-balance"><span>SỐ DƯ</span><strong>99.999 <small>$</small></strong></div>
+        <div class="armory-balance"><span>SỐ DƯ</span><strong><span id="armory-balance-value">99.999</span> <small>$</small></strong></div>
         <button class="armory-close" id="armory-close" type="button" aria-label="Đóng kho súng">×</button>
       </header>
       <div class="armory-categories" id="armory-categories"></div>
