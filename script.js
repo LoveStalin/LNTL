@@ -270,16 +270,22 @@ for (const [x, z] of [[-10.7, 5.4], [10.7, -5.4]]) {
   for (let stripe = -1.5; stripe <= 1.5; stripe += .75) cube(scene, mats.accent, x, .52, z + stripe, .53, .13, .32);
 }
 
-const safeZoneBounds = { minX: -21.1, maxX: 21.1, minZ: -6.1, maxZ: 6.1, maxHeight: 1.8 };
+const safeZoneBounds = { minX: -28.7, maxX: -18.7, minZ: -1.5, maxZ: 1.5, maxHeight: 1.8 };
+const safeZoneBaseY = .17;
+const safeZoneMaterial = new THREE.MeshBasicMaterial({ color: '#37ff91', transparent: true, opacity: .11, depthWrite: false, side: THREE.DoubleSide });
 const safeZone = new THREE.Mesh(
   new THREE.BoxGeometry(
     safeZoneBounds.maxX - safeZoneBounds.minX,
     .08,
     safeZoneBounds.maxZ - safeZoneBounds.minZ
   ),
-  new THREE.MeshBasicMaterial({ color: '#37ff91', transparent: true, opacity: .11, depthWrite: false, side: THREE.DoubleSide })
+  safeZoneMaterial
 );
-safeZone.position.set(0, .17, 0);
+safeZone.position.set(
+  (safeZoneBounds.minX + safeZoneBounds.maxX) / 2,
+  safeZoneBaseY,
+  (safeZoneBounds.minZ + safeZoneBounds.maxZ) / 2
+);
 safeZone.renderOrder = 1;
 scene.add(safeZone);
 const safeZoneOutline = new THREE.LineSegments(
@@ -328,7 +334,7 @@ function getSurfaceAt(x, z, feetY) {
 }
 
 const player = new THREE.Group();
-const playerSpawn = new THREE.Vector3(-19.2, .1, 4.7);
+const playerSpawn = new THREE.Vector3(-19.6, .1, 0);
 player.position.copy(playerSpawn);
 scene.add(player);
 let yaw = -Math.PI / 2;
@@ -339,7 +345,7 @@ camera.rotation.order = 'YXZ';
 
 let botTrainingEnabled = false;
 const bot = new THREE.Group();
-const botSpawn = new THREE.Vector3(19.2, .1, -4.7);
+const botSpawn = new THREE.Vector3(19.6, .1, 0);
 bot.position.copy(botSpawn);
 bot.rotation.y = Math.PI / 2;
 bot.visible = false;
@@ -1178,6 +1184,10 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  const safeZoneWave = Math.sin(performance.now() * .0017);
+  safeZone.position.y = safeZoneBaseY + safeZoneWave * .055;
+  safeZoneOutline.position.y = safeZone.position.y;
+  safeZoneMaterial.opacity = .095 + (safeZoneWave + 1) * .012;
   const weaponSettle = Math.exp(-delta * 5);
   weaponModel.position.x *= weaponSettle;
   weaponModel.position.y *= weaponSettle;
