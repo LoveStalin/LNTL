@@ -83,38 +83,47 @@ function addWorldCollisionBox(x, z, width, depth, bottom = 0, top = 3) {
   addCollisionBox(x, z, width, depth, bottom, top);
 }
 
-function createHouse(x, facing) {
+function createHouse(x, facing, z = 0, rotationY = 0) {
   const house = new THREE.Group();
-  house.position.set(x, 0, 0);
+  house.position.set(x, 0, z);
+  house.rotation.y = rotationY;
   scene.add(house);
   const firstFloorY = .12;
   const secondFloorY = 3.35;
   const faceX = facing * 4;
   const wallDepth = .24;
-  const frontPoint = (localX) => x + localX;
+  const localToWorld = (localX, localZ) => ({
+    x: x + Math.cos(rotationY) * localX + Math.sin(rotationY) * localZ,
+    z: z - Math.sin(rotationY) * localX + Math.cos(rotationY) * localZ
+  });
+  const addHouseCollision = (localX, localZ, width, depth, bottom, top) => {
+    const world = localToWorld(localX, localZ);
+    const halfTurn = Math.abs(Math.sin(rotationY)) > .5;
+    addCollisionBox(world.x, world.z, halfTurn ? depth : width, halfTurn ? width : depth, bottom, top);
+  };
   const wall = (localX, y, z, sx, sy, sz, material = mats.wall, collides = true) => {
     cube(house, material, localX, y, z, sx, sy, sz);
-    if (collides) addCollisionBox(frontPoint(localX), z, sx, sz, y - sy / 2, y + sy / 2);
+    if (collides) addHouseCollision(localX, z, sx, sz, y - sy / 2, y + sy / 2);
   };
   const furnishedBox = (material, localX, y, z, sx, sy, sz) => wall(localX, y, z, sx, sy, sz, material, true);
   const addWindow = (orientation, localX, localZ, y, width, height) => {
     const sillY = y - height / 2;
     if (orientation === 'front') {
       cube(house, mats.window, localX, y, localZ, .07, height, width, false);
-      addCollisionBox(frontPoint(localX), localZ, .1, width, sillY, y + height / 2);
+      addHouseCollision(localX, localZ, .1, width, sillY, y + height / 2);
       for (const zOffset of [-width / 2, width / 2]) cube(house, mats.trim, localX + facing * .055, y, localZ + zOffset, .11, height + .1, .07);
       for (const yOffset of [-height / 2, height / 2]) cube(house, mats.trim, localX + facing * .06, y + yOffset, localZ, .12, .07, width + .08);
       cube(house, mats.trim, localX + facing * .07, y, localZ, .12, .045, width, false);
     } else if (orientation === 'back') {
       cube(house, mats.window, localX, y, localZ, .07, height, width, false);
-      addCollisionBox(frontPoint(localX), localZ, .1, width, sillY, y + height / 2);
+      addHouseCollision(localX, localZ, .1, width, sillY, y + height / 2);
       for (const zOffset of [-width / 2, width / 2]) cube(house, mats.trim, localX - facing * .055, y, localZ + zOffset, .11, height + .1, .07);
       for (const yOffset of [-height / 2, height / 2]) cube(house, mats.trim, localX - facing * .06, y + yOffset, localZ, .12, .07, width + .08);
       cube(house, mats.trim, localX - facing * .07, y, localZ, .12, .045, width, false);
     } else {
       const sideZ = localZ;
       cube(house, mats.window, localX, y, sideZ, width, height, .07, false);
-      addCollisionBox(frontPoint(localX), sideZ, width, .1, sillY, y + height / 2);
+      addHouseCollision(localX, sideZ, width, .1, sillY, y + height / 2);
       for (const xOffset of [-width / 2, width / 2]) cube(house, mats.trim, localX + xOffset, y, sideZ, .07, height + .1, .11);
       for (const yOffset of [-height / 2, height / 2]) cube(house, mats.trim, localX, y + yOffset, sideZ, width + .08, .07, .12);
       cube(house, mats.trim, localX, y, sideZ, .045, .045, .12, false);
@@ -189,7 +198,7 @@ function createHouse(x, facing) {
   wall(2.45, secondFloorY, 0, 2.9, .22, 6.45, mats.slab, false);
   wall(0, secondFloorY, -2.85, 2.0, .22, .75, mats.slab, false);
   wall(0, secondFloorY, 3.12, 2.0, .22, .2, mats.slab, false);
-  houseFloors.push({ x, facing, floorY: secondFloorY, frontX: faceX });
+  houseFloors.push({ x, z, rotationY, facing, floorY: secondFloorY, frontX: faceX });
   const balconyX = faceX + facing * 1.2;
   wall(balconyX, secondFloorY + .03, 0, 2.2, .16, 3.65, mats.slab, false);
   for (const z of [-1.78, 1.78]) {
@@ -242,6 +251,8 @@ function createHouse(x, facing) {
 }
 createHouse(-14.7, 1);
 createHouse(14.7, -1);
+createHouse(0, 1, -14.7, -Math.PI / 2);
+createHouse(0, -1, 14.7, -Math.PI / 2);
 
 for (const [x, z, size] of [
   [-10.5, -7.8, 1.45], [10.5, 7.8, 1.45], [-10.3, 7.2, 1.15], [10.3, -7.1, 1.15]
@@ -316,16 +327,19 @@ function isInSafeZone(position = player.position) {
 
 function getSurfaceAt(x, z, feetY) {
   for (const house of houseFloors) {
-    const localX = x - house.x;
-    const inHouse = Math.abs(localX) <= 4.05 && Math.abs(z) <= 3.18;
+    const worldOffsetX = x - house.x;
+    const worldOffsetZ = z - house.z;
+    const localX = Math.cos(house.rotationY) * worldOffsetX - Math.sin(house.rotationY) * worldOffsetZ;
+    const localZ = Math.sin(house.rotationY) * worldOffsetX + Math.cos(house.rotationY) * worldOffsetZ;
+    const inHouse = Math.abs(localX) <= 4.05 && Math.abs(localZ) <= 3.18;
     const onBalcony = (localX - house.frontX) * house.facing >= -.15 &&
-      (localX - house.frontX) * house.facing <= 2.35 && Math.abs(z) <= 1.75;
+      (localX - house.frontX) * house.facing <= 2.35 && Math.abs(localZ) <= 1.75;
     const stairs = house.stairs;
-    if (inHouse && Math.abs(localX) < .42 && z >= stairs.minZ && z <= stairs.maxZ) {
-      const amount = (stairs.maxZ - z) / (stairs.maxZ - stairs.minZ);
+    if (inHouse && Math.abs(localX) < .42 && localZ >= stairs.minZ && localZ <= stairs.maxZ) {
+      const amount = (stairs.maxZ - localZ) / (stairs.maxZ - stairs.minZ);
       return { height: THREE.MathUtils.lerp(stairs.yLow, stairs.yHigh, amount), ramp: true };
     }
-    const upperLanding = inHouse && Math.abs(localX) < .95 && z <= stairs.minZ + .12;
+    const upperLanding = inHouse && Math.abs(localX) < .95 && localZ <= stairs.minZ + .12;
     if (feetY > 1.5 && ((inHouse && Math.abs(localX) >= .82) || onBalcony || upperLanding)) {
       return { height: house.floorY, ramp: false };
     }
