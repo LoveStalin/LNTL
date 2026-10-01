@@ -628,6 +628,62 @@ function setBotTraining(enabled) {
   updateCombatUI();
 }
 
+// Remote player representations for the first in-game multiplayer milestone.
+const remotePlayers = new Map();
+const remoteUniform = new THREE.MeshStandardMaterial({ color: '#a7c86b', roughness: .82 });
+const remoteVest = new THREE.MeshStandardMaterial({ color: '#374638', roughness: .8 });
+const remoteHead = new THREE.MeshStandardMaterial({ color: '#c49a79', roughness: .85 });
+function createRemotePlayer(id, nickname) {
+  const group = new THREE.Group();
+  cube(group, remoteUniform, 0, 1.02, 0, .56, .76, .34, false);
+  cube(group, remoteVest, 0, 1.02, -.19, .62, .56, .12, false);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 10), remoteHead);
+  head.position.y = 1.58;
+  group.add(head);
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(.23, 12, 8), mats.helmet);
+  helmet.position.set(0, 1.72, 0);
+  helmet.scale.y = .65;
+  group.add(helmet);
+  for (const side of [-1, 1]) {
+    cube(group, remoteUniform, side * .37, 1.05, -.05, .19, .62, .2, false).rotation.z = -side * .12;
+    cube(group, remoteUniform, side * .17, .37, 0, .22, .68, .24, false);
+  }
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 256; labelCanvas.height = 64;
+  const ctx = labelCanvas.getContext('2d');
+  ctx.fillStyle = '#c8f36a'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(String(nickname || 'PLAYER').slice(0, 20), 128, 40);
+  const texture = new THREE.CanvasTexture(labelCanvas);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+  label.position.y = 2.25; label.scale.set(2.2, .55, 1); group.add(label);
+  group.userData.nickname = nickname;
+  scene.add(group);
+  remotePlayers.set(id, group);
+  return group;
+}
+function removeRemotePlayer(id) {
+  const group = remotePlayers.get(id);
+  if (!group) return;
+  scene.remove(group);
+  group.traverse((object) => {
+    if (object.isSprite) { object.material.map?.dispose(); object.material.dispose(); }
+  });
+  remotePlayers.delete(id);
+}
+window.addEventListener('lntl:remote-state', (event) => {
+  const { playerId, nickname, state } = event.detail || {};
+  if (!playerId || !state || playerId === window.lntlMultiplayer?.getPlayerId()) return;
+  const remote = remotePlayers.get(playerId) || createRemotePlayer(playerId, nickname);
+  remote.position.set(state.x, state.y, state.z);
+  remote.rotation.y = state.yaw;
+});
+window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
+window.addEventListener('lntl:multiplayer', (event) => {
+  if (!event.detail?.connected) {
+    for (const id of [...remotePlayers.keys()]) removeRemotePlayer(id);
+  }
+});
+
 updateCombatUI();
 
 function saveLoadout() {
@@ -1181,9 +1237,17 @@ document.addEventListener('mousemove', (event) => {
 canvas.style.cursor = 'default';
 
 const clock = new THREE.Clock();
+let multiplayerStateTimer = 0;
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  multiplayerStateTimer += delta;
+  if (multiplayerStateTimer >= 0.05 && started && window.lntlMultiplayer?.isConnected()) {
+    multiplayerStateTimer = 0;
+    window.dispatchEvent(new CustomEvent('lntl:send-state', { detail: {
+      x: player.position.x, y: player.position.y, z: player.position.z, yaw, pitch
+    }}));
+  }
   const safeZoneWave = Math.sin(performance.now() * .0017);
   safeZone.position.y = safeZoneBaseY + safeZoneWave * .055;
   safeZoneOutline.position.y = safeZone.position.y;
