@@ -969,7 +969,7 @@ function shoot() {
   bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1, owner: 'player', damage: weapon.damage });
   magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
-  const recoilKick = weapon.recoil * .4;
+  const recoilKick = weapon.recoil * 0.15;
   pitch = THREE.MathUtils.clamp(pitch + recoilKick * (aiming ? .9 : 1), -.9, 1.35);
   weaponModel.position.y = Math.min(weaponModel.position.y + .05 + recoilKick * .18, .5);
   weaponModel.position.z = Math.min(weaponModel.position.z + .055 + recoilKick * .1, .3);
