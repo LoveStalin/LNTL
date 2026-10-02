@@ -35,17 +35,7 @@ modeToggle.addEventListener("change", () => {
     disconnect();
   }
 });
-enterButton.addEventListener("click", (event) => {
-  if (!modeToggle.checked) return;
-  event.stopImmediatePropagation();
-  if (!connected || !socket || socket.readyState !== WebSocket.OPEN) {
-    setStatus("Hãy tạo phòng hoặc tham gia phòng trước khi sẵn sàng.", true);
-    return;
-  }
-  const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
-  socket.send(JSON.stringify({ type: "ready", ready: !me?.ready }));
-  setStatus(me?.ready ? "Đã huỷ sẵn sàng." : "Đã báo sẵn sàng. Đang chờ các thành viên còn lại...");
-}, true);
+
 $("#mp-join-toggle").addEventListener("click", () => { joinRow.hidden = !joinRow.hidden; });
 $("#mp-room-code").addEventListener("input", () => {
   roomCodeInput.value = roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
