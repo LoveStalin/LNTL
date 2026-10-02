@@ -726,30 +726,25 @@ window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.
 window.addEventListener('lntl:multiplayer', (event) => {
   const detail = event.detail || {};
   if (detail.connected && detail.playerId && detail.room?.players) {
-    // Give each player a distinct spawn so remote models never start inside our camera.
-    const slot = detail.room.players.findIndex((entry) => entry.id === detail.playerId);
-    // Keep the first test players close together on the same side of the central building.
-    // This makes visibility easy to verify before implementing proper team/map spawn points.
-    const spawnSlots = [
-      { x: -2.5, z: 9, yaw: Math.PI / 2 },
-      { x: 2.5, z: 9, yaw: -Math.PI / 2 },
-      { x: -5.5, z: 9, yaw: Math.PI / 2 },
-      { x: 5.5, z: 9, yaw: -Math.PI / 2 },
-      { x: -2.5, z: 13, yaw: Math.PI / 2 },
-      { x: 2.5, z: 13, yaw: -Math.PI / 2 },
-      { x: -5.5, z: 13, yaw: Math.PI / 2 },
-      { x: 5.5, z: 13, yaw: -Math.PI / 2 },
-      { x: -8, z: 9, yaw: Math.PI / 2 },
-      { x: 8, z: 9, yaw: -Math.PI / 2 }
-    ];
-    const spawn = spawnSlots[slot] || spawnSlots[0];
-    player.position.set(spawn.x, .1, spawn.z);
-    yaw = spawn.yaw;
-    player.rotation.y = yaw;
-    pitch = -.025;
-    camera.rotation.x = pitch;
-    verticalVelocity = 0;
-    grounded = true;
+    // The server owns spawn assignments; both clients use the same room snapshot.
+    const self = detail.room.players.find((entry) => entry.id === detail.playerId);
+    const spawn = self?.state;
+    if (spawn && [spawn.x, spawn.y, spawn.z, spawn.yaw].every(Number.isFinite)) {
+      player.position.set(spawn.x, spawn.y, spawn.z);
+      yaw = spawn.yaw;
+      player.rotation.y = yaw;
+      pitch = Number.isFinite(spawn.pitch) ? spawn.pitch : -.025;
+      camera.rotation.x = pitch;
+      verticalVelocity = 0;
+      grounded = true;
+    }
+    for (const other of detail.room.players) {
+      if (other.id !== detail.playerId && other.state) {
+        window.dispatchEvent(new CustomEvent('lntl:remote-state', {
+          detail: { type: 'player:state', playerId: other.id, nickname: other.nickname, state: other.state }
+        }));
+      }
+    }
   }
   if (!detail.connected) {
     for (const id of [...remotePlayers.keys()]) removeRemotePlayer(id);

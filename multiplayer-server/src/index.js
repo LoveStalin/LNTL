@@ -163,11 +163,26 @@ export class RoomDurableObject {
       const client = pair[0];
       const server = pair[1];
       const playerId = crypto.randomUUID();
+      const spawnSlots = [
+        // Keep test spawns near the original safe spawn, outside the central building.
+        { x: -19.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
+      ];
+      const spawn = spawnSlots[room.players.length] || spawnSlots[0];
       const player = {
         id: playerId,
         nickname,
         ready: false,
         joinedAt: Date.now(),
+        state: { ...spawn, pitch: -0.025, at: Date.now() },
       };
 
       server.serializeAttachment({ playerId });
@@ -193,7 +208,7 @@ export class RoomDurableObject {
       code: room.code,
       createdAt: room.createdAt,
       maxPlayers: MAX_PLAYERS,
-      players: room.players.map(({ id, nickname, ready }) => ({ id, nickname, ready })),
+      players: room.players.map(({ id, nickname, ready, state }) => ({ id, nickname, ready, state })),
       hostId: room.players[0]?.id ?? null,
     };
   }
@@ -241,11 +256,15 @@ export class RoomDurableObject {
       if (![x, y, z, yaw, pitch].every(Number.isFinite)) return;
       // Basic sanity bounds; authoritative movement validation will replace client-trusted positions.
       if (Math.abs(x) > 30 || y < -2 || y > 12 || Math.abs(z) > 30) return;
+      const player = room.players.find((entry) => entry.id === playerId);
+      if (!player) return;
+      player.state = { x, y, z, yaw, pitch, at: Date.now() };
+      await this.ctx.storage.put("room", room);
       this.broadcast(room, {
         type: "player:state",
         playerId,
-        nickname: room.players.find((entry) => entry.id === playerId)?.nickname ?? "Player",
-        state: { x, y, z, yaw, pitch, at: Date.now() },
+        nickname: player.nickname,
+        state: player.state,
       });
       return;
     }
