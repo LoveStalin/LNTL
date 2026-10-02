@@ -542,10 +542,12 @@ const ammoCapacityLabel = document.querySelector('#ammo-capacity');
 const reloadStatus = document.querySelector('#reload-status');
 const playerHpLabel = document.querySelector('#player-hp');
 const playerHpBar = document.querySelector('#player-hp-bar');
+const playerHitPartLabel = document.querySelector('#player-hit-part');
 const botHpLabel = document.querySelector('#bot-hp');
 const botHpBar = document.querySelector('#bot-hp-bar');
 const botHealthPanel = document.querySelector('#bot-health');
 const botStateLabel = document.querySelector('#bot-state');
+const botHitPartLabel = document.querySelector('#bot-hit-part');
 const damageVignette = document.querySelector('#damage-vignette');
 const damageDirection = document.querySelector('#damage-direction');
 const playerHealthPanel = document.querySelector('#player-health');
@@ -615,7 +617,7 @@ let playerInvulnerableTimer = 0;
 let damageFlashTimer = 0;
 let playerHitSlowTimer = 0;
 
-function showDamageFeedback(incomingDirection) {
+function showDamageFeedback(incomingDirection, bodyPart, appliedDamage) {
   const direction = incomingDirection?.clone() ?? new THREE.Vector3(0, 0, 1);
   direction.y *= .65;
   if (direction.lengthSq() < .0001) direction.set(0, 0, 1);
@@ -634,6 +636,7 @@ function showDamageFeedback(incomingDirection) {
   damageVignette.classList.add('active');
   damageDirection.classList.add('active');
   playerHealthPanel.classList.add('hit');
+  playerHitPartLabel.textContent = `${bodyPart} · −${appliedDamage} HP`;
   damageFlashTimer = .62;
   playerHitSlowTimer = Math.max(playerHitSlowTimer, 1.15);
 }
@@ -1016,6 +1019,43 @@ function closestPointOnSegment(point, start, end, target) {
   return target.copy(start).addScaledVector(segment, amount);
 }
 
+const bodyParts = [
+  { name: 'ĐẦU', x: 0, y: 1.62, z: 0, radius: .23, multiplier: 2.5 },
+  { name: 'THÂN', x: 0, y: 1.08, z: 0, radius: .34, multiplier: 1 },
+  { name: 'TAY TRÁI', x: -.37, y: 1.08, z: 0, radius: .17, multiplier: .65 },
+  { name: 'TAY PHẢI', x: .37, y: 1.08, z: 0, radius: .17, multiplier: .65 },
+  { name: 'CHÂN TRÁI', x: -.17, y: .39, z: 0, radius: .18, multiplier: .7 },
+  { name: 'CHÂN PHẢI', x: .17, y: .39, z: 0, radius: .18, multiplier: .7 }
+];
+
+function getBodyPartHit(start, end, character, rotationY) {
+  const segment = end.clone().sub(start);
+  const segmentLengthSquared = segment.lengthSq();
+  if (segmentLengthSquared === 0) return null;
+  let nearestHit = null;
+  for (const part of bodyParts) {
+    const center = new THREE.Vector3(part.x, part.y, part.z)
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationY)
+      .add(character.position);
+    const offset = start.clone().sub(center);
+    const a = segmentLengthSquared;
+    const b = 2 * offset.dot(segment);
+    const c = offset.lengthSq() - part.radius * part.radius;
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) continue;
+    const root = Math.sqrt(discriminant);
+    let fraction = (-b - root) / (2 * a);
+    if (fraction < 0) fraction = (-b + root) / (2 * a);
+    if (fraction < 0 || fraction > 1 || (nearestHit && fraction >= nearestHit.fraction)) continue;
+    nearestHit = { ...part, fraction };
+  }
+  return nearestHit;
+}
+
+function damageForBodyPart(baseDamage, hit) {
+  return Math.max(1, Math.round(baseDamage * hit.multiplier));
+}
+
 function firstObstacleDistance(start, end) {
   const segment = end.clone().sub(start);
   const length = segment.length();
@@ -1036,9 +1076,10 @@ function firstObstacleDistance(start, end) {
   return nearest;
 }
 
-function damageBot(amount) {
+function damageBot(amount, hit) {
   if (!botTrainingEnabled || !botAlive) return;
   botHealth = Math.max(0, botHealth - amount);
+  botHitPartLabel.textContent = `${hit.name} · −${amount} HP`;
   if (botHealth === 0) {
     botAlive = false;
     botRespawnTimer = 5;
@@ -1047,9 +1088,10 @@ function damageBot(amount) {
   updateCombatUI();
 }
 
-function damagePlayer(amount, incomingDirection = player.position.clone().sub(bot.position)) {
+function damagePlayer(amount, hit, incomingDirection = player.position.clone().sub(bot.position)) {
   if (playerInvulnerableTimer > 0) return;
-  showDamageFeedback(incomingDirection);
+  showDamageFeedback(incomingDirection, hit.name, amount);
+  playerHitPartLabel.textContent = `${hit.name} · −${amount} HP`;
   playerHealth = Math.max(0, playerHealth - amount);
   if (playerHealth === 0) {
     playerHealth = 100;
@@ -1362,17 +1404,15 @@ function animate() {
     const previousPosition = bullet.mesh.position.clone();
     bullet.mesh.position.addScaledVector(bullet.velocity, delta);
     const obstacleDistance = firstObstacleDistance(previousPosition, bullet.mesh.position);
-    const targetPosition = bullet.owner === 'player'
-      ? bot.position.clone().add(new THREE.Vector3(0, 1.08, 0))
-      : camera.getWorldPosition(new THREE.Vector3());
-    const closestPoint = closestPointOnSegment(targetPosition, previousPosition, bullet.mesh.position, new THREE.Vector3());
-    const hitDistance = previousPosition.distanceTo(closestPoint);
-    const hitRadius = bullet.owner === 'player' ? .55 : .46;
-    const hitTarget = (bullet.owner === 'player' ? botTrainingEnabled && botAlive : true) &&
-      closestPoint.distanceTo(targetPosition) <= hitRadius && hitDistance <= obstacleDistance;
+    const target = bullet.owner === 'player' ? bot : player;
+    const targetActive = bullet.owner === 'player' ? botTrainingEnabled && botAlive : true;
+    const bodyHit = targetActive ? getBodyPartHit(previousPosition, bullet.mesh.position, target, target.rotation.y) : null;
+    const hitDistance = bodyHit ? bodyHit.fraction * previousPosition.distanceTo(bullet.mesh.position) : Infinity;
+    const hitTarget = bodyHit && hitDistance <= obstacleDistance;
     if (hitTarget) {
-      if (bullet.owner === 'player') damageBot(bullet.damage);
-      else if (!isInSafeZone(player.position)) damagePlayer(bullet.damage, bullet.velocity.clone().negate());
+      const appliedDamage = damageForBodyPart(bullet.damage, bodyHit);
+      if (bullet.owner === 'player') damageBot(appliedDamage, bodyHit);
+      else if (!isInSafeZone(player.position)) damagePlayer(appliedDamage, bodyHit, bullet.velocity.clone().negate());
       scene.remove(bullet.mesh);
       bullets.splice(i, 1);
       continue;

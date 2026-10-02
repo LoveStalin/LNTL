@@ -70,6 +70,8 @@ body { font-family: "DM Mono", monospace; }
 .bot-health { left: 50%; transform: translateX(-50%); }
 .bot-health > strong b { color: #f08b73; }
 .bot-health > small { display: block; margin-top: 5px; color: #c2a09a; font-size: 8px; letter-spacing: .8px; }
+.combat-card > .hit-part { min-height: 11px; margin-top: 5px; color: #ff958c; font-size: 8px; letter-spacing: .35px; }
+.bot-health > .hit-part { color: #ffb4a8; }
 .health-track { display: block; height: 4px; overflow: hidden; background: rgba(237,240,232,.17); }
 .health-track em { display: block; width: 100%; height: 100%; background: var(--acid); transition: width .16s ease; }
 .bot-health .health-track em { background: #e97862; }

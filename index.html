@@ -28,11 +28,13 @@
   <aside class="player-health combat-card" id="player-health" aria-label="Sức khỏe người chơi">
     <span>NGƯỜI CHƠI</span><strong><b id="player-hp">100</b><small> / 100 HP</small></strong>
     <i class="health-track"><em id="player-hp-bar"></em></i>
+    <small class="hit-part" id="player-hit-part" aria-live="polite"></small>
   </aside>
   <aside class="bot-health combat-card" id="bot-health" aria-label="Sức khỏe bot địch" hidden>
     <span>ĐỐI THỦ · BOT</span><strong><b id="bot-hp">100</b><small> / 100 HP</small></strong>
     <i class="health-track"><em id="bot-hp-bar"></em></i>
     <small id="bot-state">ĐANG TRUY TÌM</small>
+    <small class="hit-part" id="bot-hit-part" aria-live="polite"></small>
   </aside>
   <aside class="ammo-display" id="ammo-display" aria-live="polite" aria-label="Đạn trong băng">
     <span class="ammo-weapon" id="ammo-weapon">CARBINE</span>
