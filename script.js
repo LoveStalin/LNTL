@@ -1235,13 +1235,31 @@ document.querySelector('#settings-done').addEventListener('click', () => {
 botTrainingToggle.addEventListener('change', () => {
   botModeLabel.textContent = botTrainingToggle.checked ? 'CÓ' : 'KHÔNG';
 });
-document.querySelector('#enter').addEventListener('click', () => {
+function startPatrol() {
+  if (started) return;
   setBotTraining(botTrainingToggle.checked);
   captureGameShortcuts();
   started = true;
   intro.classList.add('hidden');
   settingsPanel.hidden = true;
   canvas.focus();
+}
+
+document.querySelector('#enter').addEventListener('click', () => {
+  if (document.querySelector('#multiplayer-mode')?.checked) {
+    if (!window.lntlMultiplayer?.isConnected()) {
+      const status = document.querySelector('#mp-status');
+      if (status) status.textContent = 'Hãy tạo phòng hoặc tham gia phòng trước khi sẵn sàng.';
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('lntl:ready-toggle'));
+    return;
+  }
+  startPatrol();
+});
+
+window.addEventListener('lntl:game-start', () => {
+  startPatrol();
 });
 addEventListener('keydown', (event) => {
   if (event.code === 'KeyW' && event.ctrlKey) event.preventDefault();
