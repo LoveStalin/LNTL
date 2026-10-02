@@ -8,14 +8,24 @@ const statusNode = $("#mp-status");
 const roomInfo = $("#mp-room-info");
 const joinRow = $("#mp-join-row");
 const disconnectButton = $("#mp-disconnect");
+const enterButton = $("#enter");
 let socket = null;
 let myPlayerId = null;
 let activeRoom = null;
 let connected = false;
 
 nicknameInput.value = localStorage.getItem("lntl-mp-nickname") || "";
+function updateEnterButton() {
+  if (modeToggle.checked) {
+    const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
+    enterButton.textContent = me?.ready ? "ĐÃ SẴN SÀNG ✓" : "SẴN SÀNG";
+  } else {
+    enterButton.innerHTML = "BẮT ĐẦU TUẦN TRA &nbsp; ↗";
+  }
+}
 modeToggle.addEventListener("change", () => {
   controls.hidden = !modeToggle.checked;
+  updateEnterButton();
   if (modeToggle.checked) {
     $("#bot-training").checked = false;
     $("#bot-training").disabled = true;
@@ -25,6 +35,7 @@ modeToggle.addEventListener("change", () => {
     disconnect();
   }
 });
+
 $("#mp-join-toggle").addEventListener("click", () => { joinRow.hidden = !joinRow.hidden; });
 $("#mp-room-code").addEventListener("input", () => {
   roomCodeInput.value = roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
@@ -97,6 +108,9 @@ function connect(code, nickname) {
             }));
           }
         }
+      } else if (message.type === "game:start") {
+        setStatus("Tất cả đã sẵn sàng. Đang vào trận!");
+        window.dispatchEvent(new CustomEvent("lntl:game-start", { detail: message }));
       } else if (message.type === "player:state") {
         window.dispatchEvent(new CustomEvent("lntl:remote-state", { detail: message }));
       } else if (message.type === "player:left") {
@@ -116,7 +130,14 @@ function connect(code, nickname) {
 }
 function updateRoomInfo() {
   const players = activeRoom?.players || [];
-  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/10 · " + players.map(p => p.nickname).join(", ");
+  const readyCount = players.filter((player) => player.ready).length;
+  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/10 · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
+  updateEnterButton();
+  if (modeToggle.checked && connected && players.length > 0) {
+    setStatus(readyCount === players.length && players.length >= 2
+      ? "Tất cả đã sẵn sàng. Đang bắt đầu trận..."
+      : "Đã sẵn sàng " + readyCount + "/" + players.length + ". Chờ các thành viên còn lại.");
+  }
 }
 function disconnect() {
   if (socket) { const old = socket; socket = null; old.close(1000, "Leave room"); }
@@ -124,6 +145,11 @@ function disconnect() {
   window.dispatchEvent(new CustomEvent("lntl:multiplayer", { detail: { connected: false } }));
 }
 $("#mp-disconnect").addEventListener("click", disconnect);
+window.addEventListener("lntl:ready-toggle", () => {
+  if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
+  const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
+  socket.send(JSON.stringify({ type: "ready", ready: !me?.ready }));
+});
 window.addEventListener("lntl:send-state", (event) => {
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
   socket.send(JSON.stringify({ type: "player:state", state: event.detail }));
