@@ -159,6 +159,10 @@ export class RoomDurableObject {
         return json({ error: "Room is full (10/10 players)." }, 409);
       }
 
+      // A new arrival starts a fresh lobby countdown; everyone must ready up again.
+      room.gameStarted = false;
+      for (const existingPlayer of room.players) existingPlayer.ready = false;
+
       const pair = new WebSocketPair();
       const client = pair[0];
       const server = pair[1];
@@ -244,8 +248,16 @@ export class RoomDurableObject {
       const player = room.players.find((entry) => entry.id === playerId);
       if (!player) return;
       player.ready = message.ready;
+      if (!message.ready) room.gameStarted = false;
       await this.ctx.storage.put("room", room);
       this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
+
+      const allReady = room.players.length >= 2 && room.players.every((entry) => entry.ready);
+      if (allReady && !room.gameStarted) {
+        room.gameStarted = true;
+        await this.ctx.storage.put("room", room);
+        this.broadcast(room, { type: "game:start", room: this.publicRoom(room), at: Date.now() });
+      }
       return;
     }
 
