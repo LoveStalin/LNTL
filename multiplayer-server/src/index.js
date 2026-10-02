@@ -164,16 +164,17 @@ export class RoomDurableObject {
       const server = pair[1];
       const playerId = crypto.randomUUID();
       const spawnSlots = [
-        { x: -2.5, y: 0.1, z: 9, yaw: Math.PI / 2 },
-        { x: 2.5, y: 0.1, z: 9, yaw: -Math.PI / 2 },
-        { x: -5.5, y: 0.1, z: 9, yaw: Math.PI / 2 },
-        { x: 5.5, y: 0.1, z: 9, yaw: -Math.PI / 2 },
-        { x: -2.5, y: 0.1, z: 13, yaw: Math.PI / 2 },
-        { x: 2.5, y: 0.1, z: 13, yaw: -Math.PI / 2 },
-        { x: -5.5, y: 0.1, z: 13, yaw: Math.PI / 2 },
-        { x: 5.5, y: 0.1, z: 13, yaw: -Math.PI / 2 },
-        { x: -8, y: 0.1, z: 9, yaw: Math.PI / 2 },
-        { x: 8, y: 0.1, z: 9, yaw: -Math.PI / 2 },
+        // Keep test spawns near the original safe spawn, outside the central building.
+        { x: -19.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
+        { x: -19.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
       ];
       const spawn = spawnSlots[room.players.length] || spawnSlots[0];
       const player = {
