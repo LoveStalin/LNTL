@@ -130,8 +130,14 @@ function connect(code, nickname) {
 }
 function updateRoomInfo() {
   const players = activeRoom?.players || [];
-  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/10 · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
+  const readyCount = players.filter((player) => player.ready).length;
+  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/10 · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
   updateEnterButton();
+  if (modeToggle.checked && connected && players.length > 0) {
+    setStatus(readyCount === players.length && players.length >= 2
+      ? "Tất cả đã sẵn sàng. Đang bắt đầu trận..."
+      : "Đã sẵn sàng " + readyCount + "/" + players.length + ". Chờ các thành viên còn lại.");
+  }
 }
 function disconnect() {
   if (socket) { const old = socket; socket = null; old.close(1000, "Leave room"); }
