@@ -546,6 +546,9 @@ const botHpLabel = document.querySelector('#bot-hp');
 const botHpBar = document.querySelector('#bot-hp-bar');
 const botHealthPanel = document.querySelector('#bot-health');
 const botStateLabel = document.querySelector('#bot-state');
+const damageVignette = document.querySelector('#damage-vignette');
+const damageDirection = document.querySelector('#damage-direction');
+const playerHealthPanel = document.querySelector('#player-health');
 const botTrainingToggle = document.querySelector('#bot-training');
 const botModeLabel = document.querySelector('#bot-mode-label');
 const settingsPanel = document.querySelector('#training-settings');
@@ -609,6 +612,31 @@ let botShotTimer = 1.5;
 let botMuzzleTimer = 0;
 let botStrafeSign = 1;
 let playerInvulnerableTimer = 0;
+let damageFlashTimer = 0;
+let playerHitSlowTimer = 0;
+
+function showDamageFeedback(incomingDirection) {
+  const direction = incomingDirection?.clone() ?? new THREE.Vector3(0, 0, 1);
+  direction.y *= .65;
+  if (direction.lengthSq() < .0001) direction.set(0, 0, 1);
+  direction.normalize();
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+  const screenX = direction.dot(right);
+  const screenY = -direction.dot(cameraUp);
+  const angle = Math.atan2(screenY, screenX) * 180 / Math.PI + 90;
+  damageDirection.style.setProperty('--hit-angle', `${angle}deg`);
+  damageDirection.style.setProperty('--hit-x', `${50 + screenX * 39}%`);
+  damageDirection.style.setProperty('--hit-y', `${50 + screenY * 39}%`);
+  damageVignette.classList.remove('active');
+  damageDirection.classList.remove('active');
+  void damageVignette.offsetWidth;
+  damageVignette.classList.add('active');
+  damageDirection.classList.add('active');
+  playerHealthPanel.classList.add('hit');
+  damageFlashTimer = .62;
+  playerHitSlowTimer = Math.max(playerHitSlowTimer, 1.15);
+}
 
 function updateCombatUI() {
   playerHpLabel.textContent = String(Math.ceil(playerHealth));
@@ -1019,8 +1047,9 @@ function damageBot(amount) {
   updateCombatUI();
 }
 
-function damagePlayer(amount) {
+function damagePlayer(amount, incomingDirection = player.position.clone().sub(bot.position)) {
   if (playerInvulnerableTimer > 0) return;
+  showDamageFeedback(incomingDirection);
   playerHealth = Math.max(0, playerHealth - amount);
   if (playerHealth === 0) {
     playerHealth = 100;
@@ -1051,7 +1080,6 @@ function fireBot(target) {
 
 function updateBot(delta) {
   if (!botTrainingEnabled) return;
-  playerInvulnerableTimer = Math.max(0, playerInvulnerableTimer - delta);
   botMuzzleTimer = Math.max(0, botMuzzleTimer - delta);
   botMuzzle.visible = botMuzzleTimer > 0;
   if (!botAlive) {
@@ -1282,6 +1310,10 @@ let multiplayerStateTimer = 0;
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  playerInvulnerableTimer = Math.max(0, playerInvulnerableTimer - delta);
+  damageFlashTimer = Math.max(0, damageFlashTimer - delta);
+  playerHitSlowTimer = Math.max(0, playerHitSlowTimer - delta);
+  if (damageFlashTimer === 0) playerHealthPanel.classList.remove('hit');
   multiplayerStateTimer += delta;
   if (multiplayerStateTimer >= 0.05 && started && window.lntlMultiplayer?.isConnected()) {
     multiplayerStateTimer = 0;
@@ -1340,7 +1372,7 @@ function animate() {
       closestPoint.distanceTo(targetPosition) <= hitRadius && hitDistance <= obstacleDistance;
     if (hitTarget) {
       if (bullet.owner === 'player') damageBot(bullet.damage);
-      else if (!isInSafeZone(player.position)) damagePlayer(bullet.damage);
+      else if (!isInSafeZone(player.position)) damagePlayer(bullet.damage, bullet.velocity.clone().negate());
       scene.remove(bullet.mesh);
       bullets.splice(i, 1);
       continue;
@@ -1386,7 +1418,8 @@ function animate() {
     moveForward /= length;
     moveSide /= length;
     const sprinting = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && !crouched;
-    const speed = crouched ? 2.6 : sprinting ? 8.1 : 4.7;
+    const baseSpeed = crouched ? 2.6 : sprinting ? 8.1 : 4.7;
+    const speed = baseSpeed * (playerHitSlowTimer > 0 ? .55 : 1);
     const nextX = THREE.MathUtils.clamp(
       player.position.x + (forward.x * moveForward + right.x * moveSide) * speed * delta,
       -24,

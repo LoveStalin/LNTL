@@ -40,6 +40,24 @@ body { font-family: "DM Mono", monospace; }
 .scope-mark-left, .scope-mark-right { top: calc(50% - 1px); width: 9px; height: 2px; }
 .scope-mark-left { left: 17%; }
 .scope-mark-right { right: 17%; }
+.damage-vignette { position: fixed; z-index: 2; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 35%, rgba(198,20,24,.1) 59%, rgba(205,24,28,.58) 100%); }
+.damage-vignette.active { animation: damage-flash .62s ease-out both; }
+@keyframes damage-flash {
+  0% { opacity: .95; }
+  22% { opacity: .72; }
+  100% { opacity: 0; }
+}
+.damage-direction { position: fixed; z-index: 3; left: var(--hit-x, 50%); top: var(--hit-y, 50%); width: 42px; height: 42px; transform: translate(-50%,-50%) rotate(var(--hit-angle, 0deg)); opacity: 0; pointer-events: none; }
+.damage-direction.active { animation: damage-direction-flash 1s ease-out both; }
+.damage-direction i { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; transform: translate(-50%,-50%); border: 2px solid rgba(255,87,78,.92); border-radius: 50%; box-shadow: 0 0 12px rgba(255,36,36,.4), inset 0 0 8px rgba(255,36,36,.22); }
+.damage-direction span { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 12px solid #ff746b; filter: drop-shadow(0 0 4px rgba(255,30,30,.8)); }
+@keyframes damage-direction-flash {
+  0% { opacity: 1; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.player-health.hit { border-color: rgba(255,87,78,.75); box-shadow: 0 0 16px rgba(216,30,30,.24); }
+.player-health.hit > strong b { color: #ff7770; }
 .safe-zone-notice { position: fixed; z-index: 6; left: 50%; bottom: 116px; transform: translate(-50%, 10px); padding: 10px 14px; border: 1px solid rgba(86,255,158,.48); background: rgba(12,28,20,.9); color: #9dffc2; font-size: 9px; letter-spacing: .7px; opacity: 0; visibility: hidden; transition: opacity .18s ease, transform .18s ease, visibility .18s ease; pointer-events: none; text-align: center; }
 .safe-zone-notice.visible { transform: translate(-50%, 0); opacity: 1; visibility: visible; }
 .combat-card { position: fixed; z-index: 3; top: 92px; width: 174px; padding: 10px 12px; border: 1px solid rgba(237,240,232,.18); background: rgba(20,25,22,.8); backdrop-filter: blur(8px); pointer-events: none; }
