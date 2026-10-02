@@ -79,9 +79,24 @@ function connect(code, nickname) {
         setStatus("Đã kết nối phòng " + code + ". Nhấn BẮT ĐẦU TUẦN TRA để vào trận.");
         updateRoomInfo();
         window.dispatchEvent(new CustomEvent("lntl:multiplayer", { detail: { connected: true, playerId: myPlayerId, room: activeRoom } }));
+        // Hydrate remote models from the server snapshot immediately, even before they move.
+        for (const player of activeRoom.players || []) {
+          if (player.id !== myPlayerId && player.state) {
+            window.dispatchEvent(new CustomEvent("lntl:remote-state", {
+              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, state: player.state }
+            }));
+          }
+        }
         resolve();
       } else if (message.type === "room:update") {
         activeRoom = message.room; updateRoomInfo();
+        for (const player of activeRoom.players || []) {
+          if (player.id !== myPlayerId && player.state) {
+            window.dispatchEvent(new CustomEvent("lntl:remote-state", {
+              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, state: player.state }
+            }));
+          }
+        }
       } else if (message.type === "player:state") {
         window.dispatchEvent(new CustomEvent("lntl:remote-state", { detail: message }));
       } else if (message.type === "player:left") {
