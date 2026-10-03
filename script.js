@@ -711,15 +711,11 @@ function createRemotePlayer(id, nickname, team) {
   remotePlayers.set(id, group);
   return group;
 }
-function segmentPointDistance(point, start, end) {
-  const segment = end.clone().sub(start);
-  const lengthSq = segment.lengthSq();
-  if (lengthSq === 0) return point.distanceTo(start);
-  const t = THREE.MathUtils.clamp(point.clone().sub(start).dot(segment) / lengthSq, 0, 1);
-  return point.distanceTo(start.clone().addScaledVector(segment, t));
-}
 function hitRemotePlayer(start, end) {
   let nearest = null;
+  const segment = end.clone().sub(start);
+  const lengthSq = segment.lengthSq();
+  if (lengthSq === 0) return null;
   for (const [id, group] of remotePlayers) {
     if (!group.visible) continue;
     const center = group.position;
@@ -730,8 +726,10 @@ function hitRemotePlayer(start, end) {
       { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .30 },
     ];
     for (const part of parts) {
-      if (segmentPointDistance(part.point, start, end) <= part.radius) {
-        const distance = start.distanceTo(part.point);
+      const t = THREE.MathUtils.clamp(part.point.clone().sub(start).dot(segment) / lengthSq, 0, 1);
+      const closest = start.clone().addScaledVector(segment, t);
+      if (closest.distanceTo(part.point) <= part.radius) {
+        const distance = t * Math.sqrt(lengthSq);
         if (!nearest || distance < nearest.distance) nearest = { id, group, distance };
       }
     }
