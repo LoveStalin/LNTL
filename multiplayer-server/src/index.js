@@ -138,6 +138,7 @@ export class RoomDurableObject {
         code,
         createdAt: Date.now(),
         players: [],
+        teamKills: { 1: 0, 2: 0, 3: 0, 4: 0 },
       };
       await this.ctx.storage.put("room", room);
       return json({ ok: true }, 201);
@@ -167,25 +168,45 @@ export class RoomDurableObject {
       const client = pair[0];
       const server = pair[1];
       const playerId = crypto.randomUUID();
-      const spawnSlots = [
-        // Keep test spawns near the original safe spawn, outside the central building.
-        { x: -19.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
-        { x: -19.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
-        { x: -19.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
-        { x: -16.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
-        { x: -16.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
-        { x: -16.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
-        { x: -22.6, y: 0.1, z: 0, yaw: -Math.PI / 2 },
-        { x: -22.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
-        { x: -22.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
-        { x: -19.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
-        { x: -16.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
-        { x: -22.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
+      // Four faction bases sit behind the four houses. Each house has three spawn slots.
+      // Pick the least-populated faction so 2-4 players never share a faction by default,
+      // and a full 12-player room becomes a 3v3v3v3 match.
+      const bases = [
+        { team: 1, yaw: Math.PI / 2, slots: [
+          { x: -20.2, y: 0.1, z: -2.2 }, { x: -20.2, y: 0.1, z: 0 }, { x: -20.2, y: 0.1, z: 2.2 },
+        ] },
+        { team: 2, yaw: -Math.PI / 2, slots: [
+          { x: 20.2, y: 0.1, z: -2.2 }, { x: 20.2, y: 0.1, z: 0 }, { x: 20.2, y: 0.1, z: 2.2 },
+        ] },
+        { team: 3, yaw: 0, slots: [
+          { x: -2.2, y: 0.1, z: -20.2 }, { x: 0, y: 0.1, z: -20.2 }, { x: 2.2, y: 0.1, z: -20.2 },
+        ] },
+        { team: 4, yaw: Math.PI, slots: [
+          { x: -2.2, y: 0.1, z: 20.2 }, { x: 0, y: 0.1, z: 20.2 }, { x: 2.2, y: 0.1, z: 20.2 },
+        ] },
       ];
-      const spawn = spawnSlots[room.players.length] || spawnSlots[0];
+      const teamCounts = bases.map((base) => ({
+        ...base,
+        count: room.players.filter((entry) => entry.team === base.team).length,
+      }));
+      const availableBases = teamCounts.filter((base) => base.count < base.slots.length);
+      const minCount = Math.min(...availableBases.map((base) => base.count));
+      const leastPopulated = availableBases.filter((base) => base.count === minCount);
+      const selectedBase = leastPopulated[Math.floor(Math.random() * leastPopulated.length)];
+      const usedSlots = new Set(
+        room.players
+          .filter((entry) => entry.team === selectedBase.team)
+          .map((entry) => entry.spawnSlot)
+          .filter(Number.isInteger),
+      );
+      const slotIndex = selectedBase.slots.findIndex((_, index) => !usedSlots.has(index));
+      if (slotIndex < 0) return json({ error: "No spawn slots available for this faction." }, 409);
+      const spawn = { ...selectedBase.slots[slotIndex], yaw: selectedBase.yaw };
       const player = {
         id: playerId,
         nickname,
+        team: selectedBase.team,
+        spawnSlot: slotIndex,
         ready: false,
         joinedAt: Date.now(),
         state: { ...spawn, pitch: -0.025, at: Date.now() },
@@ -214,7 +235,8 @@ export class RoomDurableObject {
       code: room.code,
       createdAt: room.createdAt,
       maxPlayers: MAX_PLAYERS,
-      players: room.players.map(({ id, nickname, ready, state }) => ({ id, nickname, ready, state })),
+      players: room.players.map(({ id, nickname, team, ready, state }) => ({ id, nickname, team, ready, state })),
+      teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
       hostId: room.players[0]?.id ?? null,
     };
   }
@@ -263,6 +285,22 @@ export class RoomDurableObject {
       return;
     }
 
+    if (message.type === "player:kill" && typeof message.victimId === "string") {
+      const killer = room.players.find((entry) => entry.id === playerId);
+      const victim = room.players.find((entry) => entry.id === message.victimId);
+      if (!killer || !victim || killer.id === victim.id || killer.team === victim.team) return;
+      room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
+      room.teamKills[killer.team] = (room.teamKills[killer.team] || 0) + 1;
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, {
+        type: "score:update",
+        teamKills: room.teamKills,
+        killerId: killer.id,
+        victimId: victim.id,
+      });
+      return;
+    }
+
     if (message.type === "player:state" && message.state && typeof message.state === "object") {
       const state = message.state;
       const x = Number(state.x), y = Number(state.y), z = Number(state.z);
@@ -278,6 +316,7 @@ export class RoomDurableObject {
         type: "player:state",
         playerId,
         nickname: player.nickname,
+        team: player.team,
         state: player.state,
       });
       return;
