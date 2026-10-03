@@ -120,6 +120,11 @@ function connect(code, nickname) {
             }));
           }
         }
+      } else if (message.type === "player:damage") {
+        updateScoreboard(message.teamKills || {});
+        window.dispatchEvent(new CustomEvent("lntl:player-damage", { detail: message }));
+      } else if (message.type === "player:respawn") {
+        window.dispatchEvent(new CustomEvent("lntl:player-respawn", { detail: message }));
       } else if (message.type === "score:update") {
         updateScoreboard(message.teamKills || {});
       } else if (message.type === "game:start") {
