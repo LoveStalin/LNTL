@@ -1,6 +1,6 @@
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 6;
-const MAX_PLAYERS = 10;
+const MAX_PLAYERS = 12;
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -156,7 +156,7 @@ export class RoomDurableObject {
 
       const activeSockets = this.ctx.getWebSockets();
       if (activeSockets.length >= MAX_PLAYERS) {
-        return json({ error: "Room is full (10/10 players)." }, 409);
+        return json({ error: `Room is full (${MAX_PLAYERS}/${MAX_PLAYERS} players).` }, 409);
       }
 
       // A new arrival starts a fresh lobby countdown; everyone must ready up again.
@@ -179,6 +179,8 @@ export class RoomDurableObject {
         { x: -22.6, y: 0.1, z: 3, yaw: -Math.PI / 2 },
         { x: -22.6, y: 0.1, z: -3, yaw: -Math.PI / 2 },
         { x: -19.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
+        { x: -16.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
+        { x: -22.6, y: 0.1, z: 6, yaw: -Math.PI / 2 },
       ];
       const spawn = spawnSlots[room.players.length] || spawnSlots[0];
       const player = {

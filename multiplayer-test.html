@@ -43,7 +43,7 @@
     <p id="status" role="status">Chưa kết nối backend.</p>
     <div class="grid">
       <div><p>MÃ PHÒNG</p><h2 id="activeCode">——</h2></div>
-      <div><p>NGƯỜI CHƠI</p><h2 id="count">0 / 10</h2></div>
+      <div><p>NGƯỜI CHƠI</p><h2 id="count">0 / 12</h2></div>
     </div>
     <ul id="players"></ul>
     <button id="ready" disabled>Đánh dấu sẵn sàng</button>
@@ -186,7 +186,7 @@
   function renderRoom() {
     activeCodeNode.textContent = currentRoom?.code || "——";
     const players = currentRoom?.players || [];
-    countNode.textContent = players.length + " / " + (currentRoom?.maxPlayers || 10);
+    countNode.textContent = players.length + " / " + (currentRoom?.maxPlayers || 12);
     playersNode.replaceChildren();
     for (const player of players) {
       const item = document.createElement("li");

@@ -131,7 +131,7 @@ function connect(code, nickname) {
 function updateRoomInfo() {
   const players = activeRoom?.players || [];
   const readyCount = players.filter((player) => player.ready).length;
-  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/10 · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
+  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/" + (activeRoom?.maxPlayers || 12) + " · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
   updateEnterButton();
   if (modeToggle.checked && connected && players.length > 0) {
     setStatus(readyCount === players.length && players.length >= 2

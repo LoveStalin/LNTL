@@ -6,7 +6,7 @@ This is an isolated first milestone for LNTL. It does **not** rewrite `script.js
 
 - Cloudflare Worker API to create six-character room codes.
 - One SQLite-backed Durable Object per room.
-- WebSocket lobby connections, guest nicknames, host assignment, ready state, disconnect handling, and a hard limit of 10 concurrent players.
+- WebSocket lobby connections, guest nicknames, host assignment, ready state, disconnect handling, and a hard limit of 12 concurrent players.
 - `../multiplayer-test.html`, a separate browser test page.
 
 This milestone is a lobby prototype, **not yet authoritative FPS gameplay**. Position validation, server-side movement/collision, weapon validation, hit detection, health, respawns, and score are future milestones.
@@ -39,7 +39,7 @@ No API token or secret belongs in the frontend. Do not commit account credential
 5. Paste the same Worker URL, enter a different nickname and the room code, then click **Tham gia phòng**.
 6. Toggle ready state in either tab and confirm both lists update.
 7. Try a random nonexistent room code and confirm the server rejects it.
-8. Repeat with separate tabs until 10 players are connected; an 11th connection should be rejected.
+8. Repeat with separate tabs until 12 players are connected; a 13th connection should be rejected.
 
 The backend accepts browser requests from any origin in this prototype so a Pages preview domain can reach it. Before a public launch, restrict allowed origins to the actual production and preview domains and add rate limiting / abuse controls.
 
