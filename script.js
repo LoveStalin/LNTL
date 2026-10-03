@@ -678,7 +678,7 @@ const remotePlayers = new Map();
 const remoteUniform = new THREE.MeshStandardMaterial({ color: '#a7c86b', roughness: .82 });
 const remoteVest = new THREE.MeshStandardMaterial({ color: '#374638', roughness: .8 });
 const remoteHead = new THREE.MeshStandardMaterial({ color: '#c49a79', roughness: .85 });
-function createRemotePlayer(id, nickname) {
+function createRemotePlayer(id, nickname, team) {
   const group = new THREE.Group();
   cube(group, remoteUniform, 0, 1.02, 0, .56, .76, .34, false);
   cube(group, remoteVest, 0, 1.02, -.19, .62, .56, .12, false);
@@ -697,7 +697,7 @@ function createRemotePlayer(id, nickname) {
   labelCanvas.width = 256; labelCanvas.height = 64;
   const ctx = labelCanvas.getContext('2d');
   ctx.fillStyle = '#c8f36a'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(String(nickname || 'PLAYER').slice(0, 20), 128, 40);
+  ctx.fillText((String(nickname || 'PLAYER') + (team ? ' · PHE ' + team : '')).slice(0, 24), 128, 40);
   const texture = new THREE.CanvasTexture(labelCanvas);
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
   label.position.y = 2.25; label.scale.set(2.2, .55, 1); group.add(label);
@@ -716,9 +716,9 @@ function removeRemotePlayer(id) {
   remotePlayers.delete(id);
 }
 window.addEventListener('lntl:remote-state', (event) => {
-  const { playerId, nickname, state } = event.detail || {};
+  const { playerId, nickname, team, state } = event.detail || {};
   if (!playerId || !state || playerId === window.lntlMultiplayer?.getPlayerId()) return;
-  const remote = remotePlayers.get(playerId) || createRemotePlayer(playerId, nickname);
+  const remote = remotePlayers.get(playerId) || createRemotePlayer(playerId, nickname, team);
   remote.position.set(state.x, state.y, state.z);
   remote.rotation.y = state.yaw;
 });
