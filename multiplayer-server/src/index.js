@@ -207,6 +207,8 @@ export class RoomDurableObject {
         nickname,
         team: selectedBase.team,
         spawnSlot: slotIndex,
+        health: 100,
+        alive: true,
         ready: false,
         joinedAt: Date.now(),
         state: { ...spawn, pitch: -0.025, at: Date.now() },
@@ -235,7 +237,7 @@ export class RoomDurableObject {
       code: room.code,
       createdAt: room.createdAt,
       maxPlayers: MAX_PLAYERS,
-      players: room.players.map(({ id, nickname, team, ready, state }) => ({ id, nickname, team, ready, state })),
+      players: room.players.map(({ id, nickname, team, ready, state, health, alive }) => ({ id, nickname, team, ready, state, health: health ?? 100, alive: alive ?? true })),
       teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
       hostId: room.players[0]?.id ?? null,
     };
@@ -281,6 +283,53 @@ export class RoomDurableObject {
         room.gameStarted = true;
         await this.ctx.storage.put("room", room);
         this.broadcast(room, { type: "game:start", room: this.publicRoom(room), at: Date.now() });
+      }
+      return;
+    }
+
+    if (message.type === "player:hit" && typeof message.victimId === "string") {
+      const attacker = room.players.find((entry) => entry.id === playerId);
+      const victim = room.players.find((entry) => entry.id === message.victimId);
+      if (!attacker || !victim || attacker.id === victim.id || attacker.team === victim.team) return;
+      if (victim.alive === false) return;
+      const damage = Math.max(1, Math.min(100, Math.round(Number(message.damage) || 0)));
+      victim.health = Math.max(0, (victim.health ?? 100) - damage);
+      if (victim.health === 0) {
+        victim.alive = false;
+        room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
+        room.teamKills[attacker.team] = (room.teamKills[attacker.team] || 0) + 1;
+      }
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, {
+        type: "player:damage",
+        attackerId: attacker.id,
+        victimId: victim.id,
+        health: victim.health,
+        alive: victim.alive,
+        teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
+      });
+      if (victim.alive === false) {
+        // Simple automatic respawn after three seconds at the victim's assigned base.
+        const baseByTeam = {
+          1: { x: -20.2, y: 0.1, z: 0, yaw: Math.PI / 2 },
+          2: { x: 20.2, y: 0.1, z: 0, yaw: -Math.PI / 2 },
+          3: { x: 0, y: 0.1, z: -20.2, yaw: 0 },
+          4: { x: 0, y: 0.1, z: 20.2, yaw: Math.PI },
+        };
+        const victimId = victim.id;
+        const roomCode = room.code;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const latest = await this.ctx.storage.get("room");
+        const respawning = latest?.players?.find((entry) => entry.id === victimId);
+        if (respawning && respawning.alive === false) {
+          respawning.health = 100;
+          respawning.alive = true;
+          const spawn = baseByTeam[respawning.team] || baseByTeam[1];
+          respawning.state = { ...spawn, pitch: -0.025, at: Date.now() };
+          await this.ctx.storage.put("room", latest);
+          this.broadcast(latest, { type: "player:respawn", player: { id: respawning.id, health: 100, alive: true, state: respawning.state } });
+          this.broadcast(latest, { type: "room:update", room: this.publicRoom(latest) });
+        }
       }
       return;
     }
