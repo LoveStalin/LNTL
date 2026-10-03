@@ -8,6 +8,16 @@ const statusNode = $("#mp-status");
 const roomInfo = $("#mp-room-info");
 const joinRow = $("#mp-join-row");
 const disconnectButton = $("#mp-disconnect");
+const scoreboard = $("#team-scoreboard");
+function updateScoreboard(teamKills = {}) {
+  for (let team = 1; team <= 4; team++) {
+    const score = $("#" + "team-score-" + team);
+    if (score) score.textContent = String(Number(teamKills[team]) || 0);
+  }
+}
+function showScoreboard(show) {
+  if (scoreboard) scoreboard.hidden = !show;
+}
 const enterButton = $("#enter");
 let socket = null;
 let myPlayerId = null;
@@ -86,6 +96,8 @@ function connect(code, nickname) {
       if (message.type === "welcome") {
         welcomed = true; connected = true; socket = candidate;
         myPlayerId = message.playerId; activeRoom = message.room;
+        showScoreboard(true);
+        updateScoreboard(activeRoom.teamKills || {});
         roomInfo.hidden = false; disconnectButton.hidden = false;
         setStatus("Đã kết nối phòng " + code + ". Nhấn BẮT ĐẦU TUẦN TRA để vào trận.");
         updateRoomInfo();
@@ -108,6 +120,8 @@ function connect(code, nickname) {
             }));
           }
         }
+      } else if (message.type === "score:update") {
+        updateScoreboard(message.teamKills || {});
       } else if (message.type === "game:start") {
         setStatus("Tất cả đã sẵn sàng. Đang vào trận!");
         window.dispatchEvent(new CustomEvent("lntl:game-start", { detail: message }));
@@ -120,7 +134,8 @@ function connect(code, nickname) {
     candidate.addEventListener("error", () => { if (!welcomed) reject(new Error("Không kết nối được backend. Kiểm tra Worker đã deploy chưa.")); });
     candidate.addEventListener("close", () => {
       if (socket === candidate || !welcomed) {
-        connected = false; socket = null; activeRoom = null; myPlayerId = null;
+        connected = false; socket = null;
+        showScoreboard(false); updateScoreboard({}); activeRoom = null; myPlayerId = null;
         roomInfo.hidden = true; disconnectButton.hidden = true;
         window.dispatchEvent(new CustomEvent("lntl:multiplayer", { detail: { connected: false } }));
         if (welcomed) setStatus("Đã ngắt kết nối.");
