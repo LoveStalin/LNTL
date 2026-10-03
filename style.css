@@ -218,3 +218,17 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
 #mp-status.mp-error { color:var(--red); }
 .mp-actions button { min-width:0; padding:10px 7px; font-size:10px; }
 @media(max-width:560px) { .multiplayer-entry { margin:12px 0; padding:10px; } }
+
+/* Multiplayer four-faction kill scoreboard */
+.team-scoreboard {
+  position: fixed; z-index: 20; top: 76px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: stretch; gap: 5px; padding: 5px;
+  border: 1px solid rgba(200,243,106,.35); background: rgba(9,13,11,.88);
+  backdrop-filter: blur(10px); pointer-events: none;
+}
+.team-scoreboard[hidden] { display: none; }
+.team-score { min-width: 66px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px 12px; border-top:2px solid var(--team-color); }
+.team-score strong { font-size:22px; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums; }
+.team-score-label { color:var(--muted); font-size:9px; letter-spacing:1.2px; }
+.team-1 { --team-color:#c8f36a; } .team-2 { --team-color:#ff6b6b; } .team-3 { --team-color:#67c8ff; } .team-4 { --team-color:#c39aff; }
+@media(max-width:560px) { .team-scoreboard { top:58px; gap:2px; padding:3px; } .team-score { min-width:48px; padding:5px 7px; } .team-score strong { font-size:18px; } .team-score-label { font-size:8px; } }
