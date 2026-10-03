@@ -165,6 +165,11 @@ window.addEventListener("lntl:ready-toggle", () => {
   const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
   socket.send(JSON.stringify({ type: "ready", ready: !me?.ready }));
 });
+window.addEventListener("lntl:player-hit", (event) => {
+  if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
+  const { victimId, damage } = event.detail || {};
+  if (victimId) socket.send(JSON.stringify({ type: "player:hit", victimId, damage }));
+});
 window.addEventListener("lntl:send-state", (event) => {
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
   socket.send(JSON.stringify({ type: "player:state", state: event.detail }));
