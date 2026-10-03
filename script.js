@@ -1049,6 +1049,18 @@ function shoot() {
   camera.getWorldDirection(direction);
   camera.getWorldPosition(origin);
   origin.addScaledVector(direction, .65);
+  // PvP hit scan: evaluate the complete shot ray immediately so fast bullets cannot skip remote players between frames.
+  if (window.lntlMultiplayer?.isConnected()) {
+    const maxDistance = 120;
+    const rayEnd = origin.clone().addScaledVector(direction, maxDistance);
+    const obstacleDistance = firstObstacleDistance(origin, rayEnd);
+    const hit = hitRemotePlayer(origin, rayEnd);
+    if (hit && hit.distance <= obstacleDistance) {
+      window.dispatchEvent(new CustomEvent('lntl:player-hit', {
+        detail: { victimId: hit.id, damage: weapon.damage || 25 }
+      }));
+    }
+  }
   const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
