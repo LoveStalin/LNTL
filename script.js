@@ -693,6 +693,11 @@ function createRemotePlayer(id, nickname, team) {
     cube(group, remoteUniform, side * .37, 1.05, -.05, .19, .62, .2, false).rotation.z = -side * .12;
     cube(group, remoteUniform, side * .17, .37, 0, .22, .68, .24, false);
   }
+  // Visible rifle attached to the remote soldier's hands, facing local -Z.
+  const rifleMaterial = new THREE.MeshStandardMaterial({ color: '#252a28', metalness: .55, roughness: .42 });
+  cube(group, rifleMaterial, .22, 1.12, -.42, .13, .13, .72, false);
+  cube(group, rifleMaterial, .22, 1.12, -.83, .055, .055, .32, false);
+  cube(group, rifleMaterial, .22, .99, -.28, .11, .2, .16, false);
   const labelCanvas = document.createElement('canvas');
   labelCanvas.width = 256; labelCanvas.height = 64;
   const ctx = labelCanvas.getContext('2d');
@@ -705,6 +710,33 @@ function createRemotePlayer(id, nickname, team) {
   scene.add(group);
   remotePlayers.set(id, group);
   return group;
+}
+function segmentPointDistance(point, start, end) {
+  const segment = end.clone().sub(start);
+  const lengthSq = segment.lengthSq();
+  if (lengthSq === 0) return point.distanceTo(start);
+  const t = THREE.MathUtils.clamp(point.clone().sub(start).dot(segment) / lengthSq, 0, 1);
+  return point.distanceTo(start.clone().addScaledVector(segment, t));
+}
+function hitRemotePlayer(start, end) {
+  let nearest = null;
+  for (const [id, group] of remotePlayers) {
+    if (!group.visible) continue;
+    const center = group.position;
+    // Approximate head, torso and legs as overlapping hit spheres.
+    const parts = [
+      { point: new THREE.Vector3(center.x, center.y + 1.68, center.z), radius: .25 },
+      { point: new THREE.Vector3(center.x, center.y + 1.15, center.z), radius: .43 },
+      { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .30 },
+    ];
+    for (const part of parts) {
+      if (segmentPointDistance(part.point, start, end) <= part.radius) {
+        const distance = start.distanceTo(part.point);
+        if (!nearest || distance < nearest.distance) nearest = { id, group, distance };
+      }
+    }
+  }
+  return nearest;
 }
 function removeRemotePlayer(id) {
   const group = remotePlayers.get(id);
@@ -1417,6 +1449,16 @@ function animate() {
     const previousPosition = bullet.mesh.position.clone();
     bullet.mesh.position.addScaledVector(bullet.velocity, delta);
     const obstacleDistance = firstObstacleDistance(previousPosition, bullet.mesh.position);
+    if (bullet.owner === 'player' && window.lntlMultiplayer?.isConnected()) {
+      const remoteHit = hitRemotePlayer(previousPosition, bullet.mesh.position);
+      const segmentDistance = previousPosition.distanceTo(bullet.mesh.position);
+      if (remoteHit && remoteHit.distance <= obstacleDistance && remoteHit.distance <= segmentDistance + .5) {
+        window.dispatchEvent(new CustomEvent('lntl:player-hit', { detail: { victimId: remoteHit.id, damage: bullet.damage } }));
+        scene.remove(bullet.mesh);
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
     const target = bullet.owner === 'player' ? bot : player;
     const targetActive = bullet.owner === 'player' ? botTrainingEnabled && botAlive : true;
     const bodyHit = targetActive ? getBodyPartHit(previousPosition, bullet.mesh.position, target, target.rotation.y) : null;
