@@ -751,6 +751,38 @@ window.addEventListener('lntl:remote-state', (event) => {
   remote.position.set(state.x, state.y, state.z);
   remote.rotation.y = state.yaw;
 });
+window.addEventListener('lntl:player-damage', (event) => {
+  const { victimId, health, alive } = event.detail || {};
+  if (victimId === window.lntlMultiplayer?.getPlayerId()) {
+    playerHealth = Math.max(0, Number(health) || 0);
+    updateCombatUI();
+    if (alive === false) playerInvulnerableTimer = 3;
+  } else {
+    const remote = remotePlayers.get(victimId);
+    if (remote && alive === false) remote.visible = false;
+  }
+});
+window.addEventListener('lntl:player-respawn', (event) => {
+  const { player: respawned } = event.detail || {};
+  if (!respawned?.id) return;
+  if (respawned.id === window.lntlMultiplayer?.getPlayerId()) {
+    playerHealth = 100;
+    if (respawned.state && [respawned.state.x, respawned.state.y, respawned.state.z, respawned.state.yaw].every(Number.isFinite)) {
+      player.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
+      yaw = respawned.state.yaw;
+      pitch = respawned.state.pitch || 0;
+      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    }
+    playerInvulnerableTimer = 1.5;
+    updateCombatUI();
+  } else {
+    const remote = remotePlayers.get(respawned.id);
+    if (remote) {
+      remote.visible = true;
+      if (respawned.state) remote.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
+    }
+  }
+});
 window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
 window.addEventListener('lntl:multiplayer', (event) => {
   const detail = event.detail || {};
