@@ -94,7 +94,7 @@ function connect(code, nickname) {
         for (const player of activeRoom.players || []) {
           if (player.id !== myPlayerId && player.state) {
             window.dispatchEvent(new CustomEvent("lntl:remote-state", {
-              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, state: player.state }
+              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, team: player.team, state: player.state }
             }));
           }
         }
@@ -131,7 +131,7 @@ function connect(code, nickname) {
 function updateRoomInfo() {
   const players = activeRoom?.players || [];
   const readyCount = players.filter((player) => player.ready).length;
-  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/" + (activeRoom?.maxPlayers || 12) + " · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + (p.ready ? " ✓" : "")).join(", ");
+  roomInfo.textContent = "MÃ PHÒNG: " + (activeRoom?.code || "—") + " · NGƯỜI CHƠI: " + players.length + "/" + (activeRoom?.maxPlayers || 12) + " · SẴN SÀNG: " + readyCount + "/" + players.length + " · " + players.map(p => p.nickname + " [PHE " + (p.team || "?") + "]" + (p.ready ? " ✓" : "")).join(", ");
   updateEnterButton();
   if (modeToggle.checked && connected && players.length > 0) {
     setStatus(readyCount === players.length && players.length >= 2
