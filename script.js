@@ -716,19 +716,22 @@ function hitRemotePlayer(start, end) {
   const segment = end.clone().sub(start);
   const lengthSq = segment.lengthSq();
   if (lengthSq === 0) return null;
+  const segmentLength = Math.sqrt(lengthSq);
   for (const [id, group] of remotePlayers) {
     if (!group.visible) continue;
     const center = group.position;
+    // Wider torso/head/legs capsules make hits reliable against the low-poly model.
     const parts = [
-      { point: new THREE.Vector3(center.x, center.y + 1.68, center.z), radius: .27 },
-      { point: new THREE.Vector3(center.x, center.y + 1.15, center.z), radius: .43 },
-      { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .31 },
+      { point: new THREE.Vector3(center.x, center.y + 1.62, center.z), radius: .34 },
+      { point: new THREE.Vector3(center.x, center.y + 1.15, center.z), radius: .52 },
+      { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .38 },
     ];
     for (const part of parts) {
-      const t = THREE.MathUtils.clamp(part.point.clone().sub(start).dot(segment) / lengthSq, 0, 1);
-      const closest = start.clone().addScaledVector(segment, t);
+      const projection = part.point.clone().sub(start).dot(segment) / lengthSq;
+      if (projection < 0 || projection > 1) continue;
+      const closest = start.clone().addScaledVector(segment, projection);
       if (closest.distanceTo(part.point) <= part.radius) {
-        const distance = t * Math.sqrt(lengthSq);
+        const distance = projection * segmentLength;
         if (!nearest || distance < nearest.distance) nearest = { id, distance };
       }
     }
@@ -1055,9 +1058,10 @@ function shoot() {
     const rayEnd = origin.clone().addScaledVector(direction, maxDistance);
     const obstacleDistance = firstObstacleDistance(origin, rayEnd);
     const hit = hitRemotePlayer(origin, rayEnd);
-    if (hit && hit.distance <= obstacleDistance) {
+    // Aiming starts at the camera; allow a small tolerance for the low-poly remote hitbox.
+    if (hit && hit.distance <= obstacleDistance + 0.02 && hit.distance <= maxDistance) {
       window.dispatchEvent(new CustomEvent('lntl:player-hit', {
-        detail: { victimId: hit.id, damage: weapon.damage || 25 }
+        detail: { victimId: hit.id, damage: Number(weapon.damage) || 25 }
       }));
     }
   }
