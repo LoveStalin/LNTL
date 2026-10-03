@@ -290,6 +290,7 @@ export class RoomDurableObject {
         type: "player:state",
         playerId,
         nickname: player.nickname,
+        team: player.team,
         state: player.state,
       });
       return;
