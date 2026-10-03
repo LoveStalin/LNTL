@@ -192,12 +192,20 @@ export class RoomDurableObject {
       const minCount = Math.min(...availableBases.map((base) => base.count));
       const leastPopulated = availableBases.filter((base) => base.count === minCount);
       const selectedBase = leastPopulated[Math.floor(Math.random() * leastPopulated.length)];
-      const slotIndex = selectedBase.count;
+      const usedSlots = new Set(
+        room.players
+          .filter((entry) => entry.team === selectedBase.team)
+          .map((entry) => entry.spawnSlot)
+          .filter(Number.isInteger),
+      );
+      const slotIndex = selectedBase.slots.findIndex((_, index) => !usedSlots.has(index));
+      if (slotIndex < 0) return json({ error: "No spawn slots available for this faction." }, 409);
       const spawn = { ...selectedBase.slots[slotIndex], yaw: selectedBase.yaw };
       const player = {
         id: playerId,
         nickname,
         team: selectedBase.team,
+        spawnSlot: slotIndex,
         ready: false,
         joinedAt: Date.now(),
         state: { ...spawn, pitch: -0.025, at: Date.now() },
