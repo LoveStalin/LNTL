@@ -138,6 +138,7 @@ export class RoomDurableObject {
         code,
         createdAt: Date.now(),
         players: [],
+        teamKills: { 1: 0, 2: 0, 3: 0, 4: 0 },
       };
       await this.ctx.storage.put("room", room);
       return json({ ok: true }, 201);
@@ -235,6 +236,7 @@ export class RoomDurableObject {
       createdAt: room.createdAt,
       maxPlayers: MAX_PLAYERS,
       players: room.players.map(({ id, nickname, team, ready, state }) => ({ id, nickname, team, ready, state })),
+      teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
       hostId: room.players[0]?.id ?? null,
     };
   }
@@ -280,6 +282,22 @@ export class RoomDurableObject {
         await this.ctx.storage.put("room", room);
         this.broadcast(room, { type: "game:start", room: this.publicRoom(room), at: Date.now() });
       }
+      return;
+    }
+
+    if (message.type === "player:kill" && typeof message.victimId === "string") {
+      const killer = room.players.find((entry) => entry.id === playerId);
+      const victim = room.players.find((entry) => entry.id === message.victimId);
+      if (!killer || !victim || killer.id === victim.id || killer.team === victim.team) return;
+      room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
+      room.teamKills[killer.team] = (room.teamKills[killer.team] || 0) + 1;
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, {
+        type: "score:update",
+        teamKills: room.teamKills,
+        killerId: killer.id,
+        victimId: victim.id,
+      });
       return;
     }
 
