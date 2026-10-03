@@ -754,6 +754,47 @@ window.addEventListener('lntl:remote-state', (event) => {
   remote.position.set(state.x, state.y, state.z);
   remote.rotation.y = state.yaw;
 });
+window.addEventListener('lntl:player-damage', (event) => {
+  const { victimId, health, alive } = event.detail || {};
+  if (victimId === window.lntlMultiplayer?.getPlayerId()) {
+    playerHealth = Math.max(0, Number(health) || 0);
+    updateCombatUI();
+    if (alive === false) {
+      // Briefly freeze local movement until the server sends the respawn event.
+      playerInvulnerableTimer = 3;
+    }
+  } else {
+    const remote = remotePlayers.get(victimId);
+    if (remote && alive === false) remote.visible = false;
+  }
+});
+window.addEventListener('lntl:player-respawn', (event) => {
+  const { player } = event.detail || {};
+  if (!player?.id) return;
+  if (player.id === window.lntlMultiplayer?.getPlayerId()) {
+    playerHealth = 100;
+    if (player.state) {
+      player.position = player.state;
+      window.dispatchEvent(new CustomEvent('lntl:server-respawn-position', { detail: player.state }));
+    }
+    playerInvulnerableTimer = 1.5;
+    updateCombatUI();
+  } else {
+    const remote = remotePlayers.get(player.id);
+    if (remote) {
+      remote.visible = true;
+      if (player.state) remote.position.set(player.state.x, player.state.y, player.state.z);
+    }
+  }
+});
+window.addEventListener('lntl:server-respawn-position', (event) => {
+  const state = event.detail || {};
+  if (![state.x, state.y, state.z, state.yaw].every(Number.isFinite)) return;
+  player.position.set(state.x, state.y, state.z);
+  yaw = state.yaw;
+  pitch = state.pitch || 0;
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+});
 window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
 window.addEventListener('lntl:multiplayer', (event) => {
   const detail = event.detail || {};
