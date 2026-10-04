@@ -414,7 +414,7 @@ function resetBoltAction() {
     boltHandle.rotation.set(0, 0, 0);
   }
 }
-
+// Details for weapons, including cost, cooldown, velocity, recoil, damage.
 const weapons = [
   { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .16, damage: 24, owned: true },
   { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .78, damage: 38 },
@@ -423,16 +423,17 @@ const weapons = [
   { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .16, damage: 15 },
   { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .18, damage: 25 },
   { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .32, damage: 34 },
-  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, damage: 78, boltDuration: 2 },
-  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, damage: 86, boltDuration: 2 },
-  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, damage: 100, boltDuration: 2 },
-  { name: 'PKM', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .16, damage: 26 },
-  { name: 'M249', category: 'Heavy Weapons', cost: 8_500, cooldown: .085, velocity: 84, recoil: .13, damage: 22 },
+  { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, damage: 82, boltDuration: 2.2 },
+  { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, damage: 72, boltDuration: 2 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, damage: 100, boltDuration: 2.4 },
+  { name: 'M249', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .14, damage: 20 },
+  { name: 'PKM', category: 'Heavy Weapons', cost: 8_500, cooldown: .075, velocity: 84, recoil: .16, damage: 22 },
   { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28, damage: 28 },
   { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, damage: 23, owned: true },
   { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12, damage: 16 },
-  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58, damage: 52 },
-  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72, damage: 40 }
+  { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58, damage: 75 },
+  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72, damage: 50 } 
+// TODO :Check the actual damage of the Sawed-off and Desert Eagle. 
 ];
 function magazineCapacity(weapon) {
   if (weapon.name === 'Sawed-off' || weapon.name === 'S686') return 2;
@@ -1052,8 +1053,9 @@ function shoot() {
   camera.getWorldDirection(direction);
   camera.getWorldPosition(origin);
   origin.addScaledVector(direction, .65);
+  const multiplayerConnected = window.lntlMultiplayer?.isConnected() ?? false;
   // PvP hit scan: evaluate the complete shot ray immediately so fast bullets cannot skip remote players between frames.
-  if (window.lntlMultiplayer?.isConnected()) {
+  if (multiplayerConnected) {
     const maxDistance = 120;
     const rayEnd = origin.clone().addScaledVector(direction, maxDistance);
     const obstacleDistance = firstObstacleDistance(origin, rayEnd);
@@ -1061,7 +1063,7 @@ function shoot() {
     // Aiming starts at the camera; allow a small tolerance for the low-poly remote hitbox.
     if (hit && hit.distance <= obstacleDistance + 0.02 && hit.distance <= maxDistance) {
       window.dispatchEvent(new CustomEvent('lntl:player-hit', {
-        detail: { victimId: hit.id, damage: Number(weapon.damage) || 25 }
+        detail: { victimId: hit.id, damage: damageAtDistance(Number(weapon.damage) || 25, hit.distance) }
       }));
     }
   }
@@ -1069,10 +1071,10 @@ function shoot() {
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
-  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(weapon.velocity), life: 1.1, owner: 'player', damage: weapon.damage });
+  bullets.push({ mesh: bullet, origin: origin.clone(), velocity: direction.multiplyScalar(weapon.velocity), life: 1.1, owner: 'player', damage: weapon.damage, skipRemoteHit: multiplayerConnected });
   magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
-  const recoilKick = weapon.recoil * 0.15;
+  const recoilKick = weapon.recoil * 0.26;
   pitch = THREE.MathUtils.clamp(pitch + recoilKick * (aiming ? .9 : 1), -.9, 1.35);
   weaponModel.position.y = Math.min(weaponModel.position.y + .05 + recoilKick * .18, .5);
   weaponModel.position.z = Math.min(weaponModel.position.z + .055 + recoilKick * .1, .3);
@@ -1124,8 +1126,20 @@ function getBodyPartHit(start, end, character, rotationY) {
   return nearestHit;
 }
 
-function damageForBodyPart(baseDamage, hit) {
-  return Math.max(1, Math.round(baseDamage * hit.multiplier));
+function damageFalloffMultiplier(distance) {
+  const falloffStart = 8;
+  const falloffEnd = 45;
+  const minimumMultiplier = .25;
+  const falloff = THREE.MathUtils.clamp((distance - falloffStart) / (falloffEnd - falloffStart), 0, 1);
+  return 1 - falloff * (1 - minimumMultiplier);
+}
+
+function damageAtDistance(baseDamage, distance) {
+  return Math.max(1, Math.round(baseDamage * damageFalloffMultiplier(distance)));
+}
+
+function damageForBodyPart(baseDamage, hit, distance) {
+  return Math.max(1, Math.round(baseDamage * hit.multiplier * damageFalloffMultiplier(distance)));
 }
 
 function firstObstacleDistance(start, end) {
@@ -1187,7 +1201,7 @@ function fireBot(target) {
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
   scene.add(bullet);
-  bullets.push({ mesh: bullet, velocity: direction.multiplyScalar(30), life: 2.2, owner: 'bot', damage: 9 });
+  bullets.push({ mesh: bullet, origin: origin.clone(), velocity: direction.multiplyScalar(30), life: 2.2, owner: 'bot', damage: 9 });
   botMuzzleTimer = .08;
   botMuzzle.visible = true;
 }
@@ -1494,11 +1508,12 @@ function animate() {
     const previousPosition = bullet.mesh.position.clone();
     bullet.mesh.position.addScaledVector(bullet.velocity, delta);
     const obstacleDistance = firstObstacleDistance(previousPosition, bullet.mesh.position);
-    if (bullet.owner === 'player' && window.lntlMultiplayer?.isConnected()) {
+    if (bullet.owner === 'player' && !bullet.skipRemoteHit && window.lntlMultiplayer?.isConnected()) {
       const hit = hitRemotePlayer(previousPosition, bullet.mesh.position);
       const segmentLength = previousPosition.distanceTo(bullet.mesh.position);
       if (hit && hit.distance <= obstacleDistance && hit.distance <= segmentLength) {
-        window.dispatchEvent(new CustomEvent('lntl:player-hit', { detail: { victimId: hit.id, damage: bullet.damage || 25 } }));
+        const distance = bullet.origin ? bullet.origin.distanceTo(previousPosition) + hit.distance : hit.distance;
+        window.dispatchEvent(new CustomEvent('lntl:player-hit', { detail: { victimId: hit.id, damage: damageAtDistance(bullet.damage || 25, distance) } }));
         scene.remove(bullet.mesh);
         bullets.splice(i, 1);
         continue;
@@ -1510,7 +1525,9 @@ function animate() {
     const hitDistance = bodyHit ? bodyHit.fraction * previousPosition.distanceTo(bullet.mesh.position) : Infinity;
     const hitTarget = bodyHit && hitDistance <= obstacleDistance;
     if (hitTarget) {
-      const appliedDamage = damageForBodyPart(bullet.damage, bodyHit);
+      const hitPosition = previousPosition.clone().lerp(bullet.mesh.position, bodyHit.fraction);
+      const distance = bullet.origin ? bullet.origin.distanceTo(hitPosition) : hitDistance;
+      const appliedDamage = damageForBodyPart(bullet.damage, bodyHit, distance);
       if (bullet.owner === 'player') damageBot(appliedDamage, bodyHit);
       else if (!isInSafeZone(player.position)) damagePlayer(appliedDamage, bodyHit, bullet.velocity.clone().negate());
       scene.remove(bullet.mesh);
