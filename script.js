@@ -419,15 +419,15 @@ const weapons = [
   { name: 'CARBINE', category: 'Rifles', cost: 0, cooldown: .16, velocity: 75, recoil: .16, damage: 24, owned: true },
   { name: 'S1897', category: 'Shotguns', cost: 2_400, cooldown: .72, velocity: 58, recoil: .78, damage: 38 },
   { name: 'S686', category: 'Shotguns', cost: 3_200, cooldown: .48, velocity: 62, recoil: .68, damage: 46 },
-  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .13, velocity: 68, recoil: .2, damage: 20 },
-  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .075, velocity: 62, recoil: .16, damage: 15 },
-  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .105, velocity: 82, recoil: .18, damage: 25 },
-  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .19, velocity: 90, recoil: .32, damage: 34 },
+  { name: 'UMP45', category: 'SMGs', cost: 2_800, cooldown: .05, velocity: 68, recoil: .2, damage: 20 },
+  { name: 'UZI', category: 'SMGs', cost: 2_200, cooldown: .035, velocity: 62, recoil: .16, damage: 15 },
+  { name: 'M416', category: 'Rifles', cost: 4_500, cooldown: .070, velocity: 82, recoil: .18, damage: 25 },
+  { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .075, velocity: 90, recoil: .32, damage: 34 },
   { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, damage: 82, boltDuration: 2.2 },
   { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, damage: 72, boltDuration: 2 },
   { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, damage: 100, boltDuration: 2.4 },
-  { name: 'M249', category: 'Heavy Weapons', cost: 7_500, cooldown: .12, velocity: 88, recoil: .14, damage: 20 },
-  { name: 'PKM', category: 'Heavy Weapons', cost: 8_500, cooldown: .075, velocity: 84, recoil: .16, damage: 22 },
+  { name: 'M249', category: 'Heavy Weapons', cost: 7_500, cooldown: .09, velocity: 88, recoil: .14, damage: 20 },
+  { name: 'PKM', category: 'Heavy Weapons', cost: 8_500, cooldown: .055, velocity: 84, recoil: .16, damage: 22 },
   { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28, damage: 28 },
   { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, damage: 23, owned: true },
   { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12, damage: 16 },
@@ -1074,7 +1074,7 @@ function shoot() {
   bullets.push({ mesh: bullet, origin: origin.clone(), velocity: direction.multiplyScalar(weapon.velocity), life: 1.1, owner: 'player', damage: weapon.damage, skipRemoteHit: multiplayerConnected });
   magazineAmmo.set(weapon.name, ammo - 1);
   shotCooldown = weapon.cooldown;
-  const recoilKick = weapon.recoil * 0.26;
+  const recoilKick = weapon.recoil * 0.20;
   pitch = THREE.MathUtils.clamp(pitch + recoilKick * (aiming ? .9 : 1), -.9, 1.35);
   weaponModel.position.y = Math.min(weaponModel.position.y + .05 + recoilKick * .18, .5);
   weaponModel.position.z = Math.min(weaponModel.position.z + .055 + recoilKick * .1, .3);
