@@ -405,6 +405,215 @@ let boltCycle = null;
 const boltArmRest = new THREE.Vector3(.43, -.49, -.48);
 const boltArmWork = new THREE.Vector3(.27, -.27, -.79);
 const boltHandleRest = new THREE.Vector3(.39, -.15, -.88);
+const meleeModel = new THREE.Group();
+viewModel.add(meleeModel);
+
+const meleeMetal = new THREE.MeshStandardMaterial({ color: '#3a3a3a', metalness: 0.72, roughness: 0.3 });
+const meleeHandle = new THREE.MeshStandardMaterial({ color: '#5a3b1f', roughness: 0.6 });
+function buildMeleeModel() {
+  meleeModel.clear()
+  const weapon = meleeWeapons[selectedMeleeIndex];
+
+  const steel = new THREE.MeshStandardMaterial({
+    color: '#3a3a3a',
+    metalness: 0.82,
+    roughness: 0.34
+  });
+
+  const grip = new THREE.MeshStandardMaterial({
+    color: '#454b52',
+    roughness: 0.6
+  })
+  const guardMaterial = new THREE.MeshStandardMaterial({
+    color : '#777d83',
+    metalness: 0.5,
+});
+
+function part(material,x ,y ,z, w, h, d) {
+  return cube(meleeModel, material, x, y, z, w, h, d, false);
+}
+function cylinder(
+  material,
+  x,
+  y,
+  z,
+  radiusTop,
+  height,
+  segments = 12
+)
+{
+  const mesh =new THREE.Mesh(
+    new THREE.CylinderGeometry(radiusTop, radiusTop, height, segments),
+    material
+  );
+  mesh.position.set(x, y, z);
+  meleeModel.add(mesh);
+  return mesh;
+}
+
+function blade(length, width, thickness) {
+  const vertices = new Float32Array([
+    -width / 2, 0, 0,
+    width / 2, 0, 0,
+    width / 2, length * 0.72,
+    -width / 2, length * 0.72,
+  ]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3)
+);
+geometry.setIndex([0, 1, 2, 0, 2, 3, 2, 3, 4]);
+geometry.computeVertexNormals();
+const mesh = new THREE.Mesh(geometry, steel);
+mesh.position.set(0.25, -0.08 , -0.83);
+melee.rotation.set= -Math.PI / 2;
+meleeModel.add(mesh);
+
+ part(
+  darkSteel,
+  0.25, -0.10, -0.83 - length * 0.36,
+  thickness, 0.035, length * 0.62
+ );
+}
+if(weapon.type === 'knife') {
+  blade(0.66, 0.17, 0.035);
+
+part(
+  darkSteel,
+  0.25, -0.095, -1.02,
+  0.035, 0.035, 0.43
+);
+part(
+  guardMaterial,
+  0.25, -0.13, -0.79,
+  0.28, 0.075, 0.09
+);
+part(
+  grip,
+  0.25, -0.32, -0.68,
+  0.13, 0.34, 0.13
+);
+for(let i=0;i < 4; i++) {
+  part(
+    darkSteel,
+    0.25, -0.22 + i * 0.065, -0.68,
+    0.14, 0.018, 0.14
+  );
+}
+part(
+  guardMaterial,
+  0.25, -0.37, -0.68,
+  0.11, 0.53, 0.11
+);
+}
+
+else if (weapon.type === 'axe') { 
+part(
+  grip,
+  0.25, -0.37, -0.68,
+  0.11, 0.53, 0.11
+);
+part(
+  darkSteel,
+  0.25, -0.055, -0.68,
+  0.11, 0.53, 0.11
+);
+part(
+  steel,
+  0.25, -0.205, -0.055, -0.68,
+  0.045, 0.19, 0.2
+);
+part(
+  steel,
+  0.25 + 0.205, -0.055, -0.68,
+  0.045, 0.19, 0.2
+);
+part(
+  guardMaterial,
+  0.25, -0.19, -0.68,
+  0.15, 0.08, 0.15
+);
+for(let i=0;i < 5; i++) {
+  part(
+    darkSteel,
+    0.25, -0.25 + i * 0.075, -0.68,
+    0.12, 0.018, 0.12
+  );
+  }
+}
+else if (weapon.type === 'pan') {
+  // Thân Chảo
+  const panBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.085, 32), darkSteel);
+  panBody.position.set(0.25, -0.07, -0.88);
+  panBody.rotation.x = Math.PI / 2;
+  meleeModel.add(panBody);
+// Mặt Chảo
+  const panFace = new THREE.Mesh(new THREE.CircleGeometry(0.175, 32), steel);
+  panFace.position.set(0.25, -0.07, -0.83);
+  meleeModel.add(panFace);
+// Vành Chảo
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.195, 0.025, 8, 32), guardMaterial);
+  rim.position.set(0.25, -0.07, -0.82);
+  meleeModel.add(rim);
+  part(
+    grip,
+    0.25, -0.07, -0.53,
+    0.105, 0.095, 0.52
+  );
+  part(
+    guardMaterial,
+    0.25, -0.07, -0.78,
+    0.13, 0.12, 0.13
+  );
+  const hole = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.009, 6, 16), guardMaterial);
+  hole.position.set(0.25, -0.07, -0.27);
+  meleeModel.add(hole);
+}
+else if (weapon.type === 'katana') {
+  blade(0.75, 0.08, 0.02);
+  part(
+    grip,
+    0.25, -0.32, -0.68,
+    0.11, 0.53, 0.11
+  );
+  part(
+    guardMaterial,
+    0.25, -0.13, -0.79,
+    0.28, 0.075, 0.09
+  );
+  part(
+    steel,
+    0.25, -0.095, -1.02,
+    0.035, 0.035, 0.43
+  )
+  for(let i=0;i < 4; i++) {
+    part(
+      darkSteel,
+      0.25, -0.22 + i * 0.065, -0.68,
+      0.14, 0.018, 0.14
+    );
+  }
+}
+
+meleeModel.position.set(0, 0, 0);
+meleeModel.rotation.set(0, 0, 0);
+meleeModel.visible = meleeMode;
+weaponModel.visible = !meleeMode;
+}
+function selectMeleeWeapon(index) {
+  if (index < 0 || index >= meleeWeapons.length) return;
+  selectedMeleeIndex = index;
+  meleeMode= true;
+  weaponModel.visible = false;
+  buildMeleeModel();
+  weaponLabel.textContent = ` 3 / ${meleeWeapons[index].name}`;
+  ammoWeaponLabel.textContent = meleeWeapons[index].name;
+  
+  ammoCurrentLabel.textContent = '∞';
+  ammoCapacityLabel.textContent = '∞';
+  ammoDisplay.classList.remove('ammo-low' , 'is-reloading');
+
+  updateAimUI();
+}
 function resetBoltAction() {
   boltCycle = null;
   boltArm.position.copy(boltArmRest);
@@ -425,16 +634,78 @@ const weapons = [
   { name: 'AKM', category: 'Rifles', cost: 4_000, cooldown: .075, velocity: 90, recoil: .32, damage: 34 },
   { name: 'M24', category: 'Sniper Rifles', cost: 6_000, cooldown: .8, velocity: 115, recoil: .68, damage: 82, boltDuration: 2.2 },
   { name: 'Kar98k', category: 'Sniper Rifles', cost: 5_500, cooldown: .95, velocity: 108, recoil: .76, damage: 72, boltDuration: 2 },
-  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: .9, damage: 100, boltDuration: 2.4 },
+  { name: 'AWM', category: 'Sniper Rifles', cost: 9_000, cooldown: 1.1, velocity: 135, recoil: 1, damage: 100, boltDuration: 2.4 },
   { name: 'M249', category: 'Heavy Weapons', cost: 7_500, cooldown: .09, velocity: 88, recoil: .14, damage: 20 },
   { name: 'PKM', category: 'Heavy Weapons', cost: 8_500, cooldown: .055, velocity: 84, recoil: .16, damage: 22 },
   { name: 'P1911', category: 'Pistols', cost: 1_200, cooldown: .3, velocity: 65, recoil: .28, damage: 28 },
   { name: 'P92', category: 'Pistols', cost: 1_000, cooldown: .24, velocity: 62, recoil: .22, damage: 23, owned: true },
   { name: 'P18C', category: 'Pistols', cost: 1_600, cooldown: .1, velocity: 60, recoil: .12, damage: 16 },
   { name: 'Desert Eagle', category: 'Pistols', cost: 3_500, cooldown: .42, velocity: 92, recoil: .58, damage: 75 },
-  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72, damage: 50 } 
+  { name: 'Sawed-off', category: 'Pistols', cost: 2_600, cooldown: .56, velocity: 55, recoil: .72, damage: 75 } 
 // TODO :Check the actual damage of the Sawed-off and Desert Eagle. 
 ];
+const meleeWeapons = [
+  { 
+    name: 'Dao',
+    category:' Melee',
+    damage: 30,
+    range: 1.0,
+    cooldown: 0.2,
+    cost: 0,
+    owned: true,
+    type: 'knife'
+  },
+  { 
+    name: 'Búa', 
+    category: 'Melee',
+    damage: 50, 
+    range: 1.3, 
+    cooldown: 0.35, 
+    cost: 300, 
+    type: 'axe' 
+  },
+  {
+    name: 'Chảo',
+    category: 'Melee',
+    damage: 40,
+    range: 1.5,
+    cooldown: 0.5,
+    cost: 400,
+    type: 'pan'
+  },
+  {
+    name: 'Katana',
+    category: 'Melee',
+    damage: 35,
+    range: 1.2,
+    cooldown: 0.4,
+    cost: 250,
+    type: 'katana'
+  }
+];
+let selectedMeleeIndex = 0;
+let meleeMode = false;
+let meleeCooldown = 0;
+let meleeSwing = 0;
+
+const ownedMeleeWeapons = new Set(['DAO']);
+
+try {
+  const saved = JSON.parse(
+    localStorage.getItem('outpost-owned-melee') || '[]'
+  );
+
+  if (Array.isArray(saved)) {
+    for (const name of saved) {
+      if (meleeWeapons.some((weapon) => weapon.name === name)) {
+        ownedMeleeWeapons.add(name);
+      }
+    }
+  }
+} catch {
+  // Giữ dao làm vũ khí mặc định.
+}
+// End of Calling
 function magazineCapacity(weapon) {
   if (weapon.name === 'Sawed-off' || weapon.name === 'S686') return 2;
   if (weapon.category === 'Heavy Weapons') return 100;
@@ -902,9 +1173,79 @@ function renderArmory() {
       card.append(icon, info, button);
       list.append(card);
     }
+    
     section.append(list);
     armoryCategories.append(section);
   }
+
+  // Danh mục vũ khí cận chiến.
+  const meleeSection = document.createElement('section');
+  meleeSection.className = 'armory-category';
+
+  const meleeHeading = document.createElement('h3');
+  meleeHeading.textContent = 'MELEE / CẬN CHIẾN';
+
+  const meleeCount = document.createElement('span');
+  meleeCount.textContent = `${meleeWeapons.length} ITEMS`;
+  meleeHeading.append(meleeCount);
+
+  const meleeList = document.createElement('div');
+  meleeList.className = 'armory-list';
+
+  for (const weapon of meleeWeapons) {
+    const card = document.createElement('article');
+    card.className = 'weapon-card';
+    card.dataset.category = 'Melee';
+
+    const icon = document.createElement('span');
+    icon.className = 'weapon-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent =
+      weapon.type === 'knife' ? '🔪' :
+      weapon.type === 'axe' ? '🔨' :
+      weapon.type === 'pan' ? '🍳' :
+      weapon.type === 'katana' ? '🗡️' : '⚔️';
+
+    const info = document.createElement('span');
+    info.className = 'weapon-info';
+
+    const name = document.createElement('strong');
+    name.className = 'weapon-name';
+    name.textContent = weapon.name;
+
+    const meta = document.createElement('span');
+    meta.className = 'weapon-meta';
+    meta.textContent =
+      `${weapon.damage} DAMAGE · CẬN CHIẾN · $${weapon.cost.toLocaleString('en-US')}`;
+
+    info.append(name, meta);
+
+    const button = document.createElement('button');
+    button.className = 'weapon-action';
+    button.type = 'button';
+    button.dataset.melee = weapon.name;
+
+    const isOwned = ownedMeleeWeapons.has(weapon.name);
+    const isSelected =
+      meleeMode &&
+      meleeWeapons[selectedMeleeIndex]?.name === weapon.name;
+
+    button.textContent = isSelected
+      ? 'ĐANG DÙNG'
+      : isOwned
+        ? 'TRANG BỊ'
+        : playerBalance >= weapon.cost
+          ? `MUA · $${weapon.cost.toLocaleString('en-US')}`
+          : 'KHÔNG ĐỦ TIỀN';
+
+    button.disabled = isSelected || (!isOwned && playerBalance < weapon.cost);
+
+    card.append(icon, info, button);
+    meleeList.append(card);
+  }
+
+  meleeSection.append(meleeHeading, meleeList);
+  armoryCategories.append(meleeSection);
 }
 
 function openArmory(open) {
@@ -920,25 +1261,75 @@ function openArmory(open) {
   canvas.style.cursor = open ? 'default' : (document.pointerLockElement === canvas ? 'none' : 'default');
 }
 
+
 function buyOrEquipWeapon(name) {
-  const index = weapons.findIndex((weapon) => weapon.name === name);
+  // Xử lý vũ khí cận chiến trước.
+  const meleeIndex = meleeWeapons.findIndex(
+    (weapon) => weapon.name === name
+  );
+
+  if (meleeIndex >= 0) {
+    const weapon = meleeWeapons[meleeIndex];
+
+    if (!ownedMeleeWeapons.has(name)) {
+      if (playerBalance < weapon.cost) {
+        armoryStatus.textContent =
+          `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
+        return;
+      }
+
+      playerBalance -= weapon.cost;
+      ownedMeleeWeapons.add(name);
+      saveBalance();
+
+      try {
+        localStorage.setItem(
+          'outpost-owned-melee',
+          JSON.stringify([...ownedMeleeWeapons])
+        );
+      } catch {
+        // Vẫn giữ quyền sở hữu trong phiên hiện tại.
+      }
+    }
+
+    selectMelee(meleeIndex);
+    armoryStatus.textContent = `${name} ĐANG ĐƯỢC TRANG BỊ`;
+    renderArmory();
+    return;
+  }
+
+  // Giữ nguyên cơ chế mua và trang bị súng.
+  const index = weapons.findIndex(
+    (weapon) => weapon.name === name
+  );
+
   if (index < 0) return;
+
   const weapon = weapons[index];
+
   if (!ownedWeapons.has(name)) {
     if (playerBalance < weapon.cost) {
-      armoryStatus.textContent = `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
+      armoryStatus.textContent =
+        `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
       return;
     }
+
     playerBalance -= weapon.cost;
     ownedWeapons.add(name);
     saveBalance();
   }
+
   try {
-    localStorage.setItem('outpost-owned-weapons', JSON.stringify([...ownedWeapons]));
+    localStorage.setItem(
+      'outpost-owned-weapons',
+      JSON.stringify([...ownedWeapons])
+    );
   } catch {
-    // Keep the purchase for the current session when storage is unavailable.
+    // Giữ quyền sở hữu trong phiên hiện tại.
   }
+
   equipWeapon(index);
+  renderArmory();
 }
 
 function startReload() {
@@ -1036,6 +1427,12 @@ function updateBoltAction(delta) {
 
 function shoot() {
   if (!started || armoryOpen || isReloading) return;
+
+  if (meleeMode) {
+    meleeAttack();
+    return;
+  }
+
   if (boltCycle) {
     shooting = false;
     return;
@@ -1085,6 +1482,69 @@ function shoot() {
   updateAmmoUI();
 }
 
+function meleeAttack() {
+  if (!started || armoryOpen || !meleeMode) return;
+  if (meleeCooldown > 0) return;
+
+  const weapon = meleeWeapons[selectedMeleeIndex];
+  meleeCooldown = weapon.cooldown;
+  meleeSwing = 0.22;
+
+  const direction = new THREE.Vector3();
+  const origin = new THREE.Vector3();
+
+  camera.getWorldDirection(direction);
+  camera.getWorldPosition(origin);
+
+  const end = origin.clone().addScaledVector(
+    direction,
+    weapon.range
+  );
+
+  const obstacleDistance = firstObstacleDistance(origin, end);
+
+  // Đánh người chơi khác trong phòng multiplayer.
+  if (window.lntlMultiplayer?.isConnected()) {
+    const hit = hitRemotePlayer(origin, end);
+
+    if (
+      hit &&
+      hit.distance <= weapon.range &&
+      hit.distance <= obstacleDistance
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('lntl:player-hit', {
+          detail: {
+            victimId: hit.id,
+            damage: weapon.damage
+          }
+        })
+      );
+    }
+  }
+
+  // Đánh bot trong chế độ luyện tập.
+  if (botTrainingEnabled && botAlive) {
+    const hit = getBodyPartHit(
+      origin,
+      end,
+      bot,
+      bot.rotation.y
+    );
+
+    if (hit) {
+      const hitDistance =
+        hit.fraction * origin.distanceTo(end);
+
+      if (
+        hitDistance <= weapon.range &&
+        hitDistance <= obstacleDistance
+      ) {
+        damageBot(weapon.damage, hit);
+      }
+    }
+  }
+}
 function closestPointOnSegment(point, start, end, target) {
   const segment = end.clone().sub(start);
   const lengthSquared = segment.lengthSq();
@@ -1295,9 +1755,20 @@ function cycleWeapon(direction) {
   switchWeaponSlot(activeWeaponSlot === 'primary' ? 'pistol' : 'primary');
 }
 
+
 function handleArmoryClick(event) {
+  const meleeButton = event.target.closest('[data-melee]');
+
+  if (meleeButton) {
+    buyOrEquipWeapon(meleeButton.dataset.melee);
+    return;
+  }
+
   const button = event.target.closest('[data-weapon]');
-  if (button) buyOrEquipWeapon(button.dataset.weapon);
+
+  if (button) {
+    buyOrEquipWeapon(button.dataset.weapon);
+  }
 }
 
 const intro = document.querySelector('#intro');
@@ -1374,8 +1845,30 @@ addEventListener('keydown', (event) => {
     return;
   }
   if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space"].includes(event.code)) event.preventDefault();
-  if (event.code === 'Digit1') switchWeaponSlot('primary');
-  if (event.code === 'Digit2') switchWeaponSlot('pistol');
+  
+if (event.code === 'Digit1') {
+  meleeMode = false;
+  weaponModel.visible = true;
+  meleeModel.visible = false;
+  switchWeaponSlot('primary');
+}
+
+if (event.code === 'Digit2') {
+  meleeMode = false;
+  weaponModel.visible = true;
+  meleeModel.visible = false;
+  switchWeaponSlot('pistol');
+}
+
+if (event.code === 'Digit3') {
+  selectMelee(selectedMeleeIndex);
+}
+
+if (event.code === 'KeyV' && !event.repeat) {
+  selectMelee(
+    (selectedMeleeIndex + 1) % meleeWeapons.length
+  );
+}
   if (event.code === 'KeyC' && !event.repeat) toggleCrouch();
   if (event.code === 'Space' && started && grounded && !event.repeat) {
     verticalVelocity = 6.4;
@@ -1500,6 +1993,19 @@ function animate() {
   }
   updateBoltAction(delta);
   shotCooldown = Math.max(0, shotCooldown - delta);
+
+  meleeCooldown = Math.max(0, meleeCooldown - delta);
+  meleeSwing = Math.max(0, meleeSwing - delta);
+
+    if (meleeMode) {
+      const swingProgress = meleeSwing / 0.22;
+
+          meleeModel.rotation.x = -Math.sin(swingProgress * Math.PI) * 0.85;
+          meleeModel.rotation.y = -Math.sin(swingProgress * Math.PI) * 0.35;
+     } 
+    else {
+  meleeModel.rotation.set(0, 0, 0);
+    }
   if (started && shooting && shotCooldown <= 0) shoot();
   if (started) updateBot(delta);
 
