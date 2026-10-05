@@ -984,7 +984,11 @@ function getLoadoutStatus() {
 }
 
 function selectWeapon(index) {
-  if (!weapons[index] || !ownedWeapons.has(weapons[index].name) || !Object.values(equippedSlots).includes(index)) return;
+  if (
+    !weapons[index] ||
+    !ownedWeapons.has(weapons[index].name) ||
+    (equippedSlots.primary !== index && equippedSlots.pistol !== index)
+  ) return;
 
   if (selectedWeapon !== index && boltCycle) resetBoltAction();
   if (selectedWeapon !== index && isReloading) {
@@ -1001,7 +1005,7 @@ function selectWeapon(index) {
 
   weaponModel.clear();
   weaponModel.position.set(0,0,0);
-  buildWeaponModel(selectedWeapon >= 0 ? weapons[selectedWeapon] : weapons[index]);
+  buildWeaponModel(weapons[selectedWeapon]);
 
   const slotNumber=activeWeaponSlot==='primary' ? 1 : 2;
   weaponLabel.textContent=`${slotNumber} / ${weapons[selectedWeapon].name}`;
