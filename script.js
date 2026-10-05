@@ -408,212 +408,112 @@ const boltHandleRest = new THREE.Vector3(.39, -.15, -.88);
 const meleeModel = new THREE.Group();
 viewModel.add(meleeModel);
 
-const meleeMetal = new THREE.MeshStandardMaterial({ color: '#3a3a3a', metalness: 0.72, roughness: 0.3 });
-const meleeHandle = new THREE.MeshStandardMaterial({ color: '#5a3b1f', roughness: 0.6 });
+const meleeMetal = new THREE.MeshStandardMaterial({ color:'#737a80', metalness:.78, roughness:.28 });
+const meleeDarkMetal = new THREE.MeshStandardMaterial({ color:'#30353a', metalness:.7, roughness:.34 });
+const meleeHandle = new THREE.MeshStandardMaterial({ color:'#4a3020', roughness:.82 });
+const meleeWrap = new THREE.MeshStandardMaterial({ color:'#252a2d', roughness:.88 });
+
 function buildMeleeModel() {
-  meleeModel.clear()
+  meleeModel.clear();
   const weapon = meleeWeapons[selectedMeleeIndex];
+  if (!weapon) return;
 
-  const steel = new THREE.MeshStandardMaterial({
-    color: '#3a3a3a',
-    metalness: 0.82,
-    roughness: 0.34
-  });
+  const part = (material,x,y,z,sx,sy,sz) => cube(meleeModel,material,x,y,z,sx,sy,sz,false);
 
-  const grip = new THREE.MeshStandardMaterial({
-    color: '#454b52',
-    roughness: 0.6
-  })
-  const guardMaterial = new THREE.MeshStandardMaterial({
-    color : '#777d83',
-    metalness: 0.5,
-});
+  const addBlade = (length,width,thickness,curve=0) => {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(width,thickness,length),meleeMetal);
+    blade.position.set(.25,-.08,-.82-length*.42);
+    blade.rotation.y = curve;
+    blade.castShadow = false;
+    meleeModel.add(blade);
 
-function part(material,x ,y ,z, w, h, d) {
-  return cube(meleeModel, material, x, y, z, w, h, d, false);
-}
-function cylinder(
-  material,
-  x,
-  y,
-  z,
-  radiusTop,
-  height,
-  segments = 12
-)
-{
-  const mesh =new THREE.Mesh(
-    new THREE.CylinderGeometry(radiusTop, radiusTop, height, segments),
-    material
-  );
-  mesh.position.set(x, y, z);
-  meleeModel.add(mesh);
-  return mesh;
-}
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(width*.72,width*1.55,4),meleeMetal);
+    tip.rotation.x = Math.PI/2;
+    tip.position.set(.25,-.08,-.82-length-width*.55);
+    tip.castShadow = false;
+    meleeModel.add(tip);
+  };
 
-function blade(length, width, thickness) {
-  const vertices = new Float32Array([
-    -width / 2, 0, 0,
-    width / 2, 0, 0,
-    width / 2, length * 0.72,
-    -width / 2, length * 0.72,
-  ]);
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3)
-);
-geometry.setIndex([0, 1, 2, 0, 2, 3, 2, 3, 4]);
-geometry.computeVertexNormals();
-const mesh = new THREE.Mesh(geometry, steel);
-mesh.position.set(0.25, -0.08 , -0.83);
-melee.rotation.set= -Math.PI / 2;
-meleeModel.add(mesh);
+  if (weapon.type === 'knife') {
+    addBlade(.58,.12,.035,-.035);
+    part(meleeDarkMetal,.25,-.13,-.78,.28,.07,.09);
+    part(meleeHandle,.25,-.31,-.68,.12,.34,.12);
+    for(let i=0;i<5;i++) part(meleeWrap,.25,-.18-i*.065,-.68,.135,.018,.135);
+    part(meleeDarkMetal,.25,-.51,-.68,.14,.05,.14);
+  } else if (weapon.type === 'axe') {
+    part(meleeHandle,.25,-.35,-.68,.105,.58,.105);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(.42,.22,.2),meleeMetal);
+    head.position.set(.25,-.08,-.68);
+    head.castShadow=false;
+    meleeModel.add(head);
+    part(meleeDarkMetal,.25,-.19,-.68,.14,.08,.14);
+    for(let i=0;i<5;i++) part(meleeWrap,.25,-.19-i*.075,-.68,.125,.018,.125);
+  } else if (weapon.type === 'pan') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(.22,.19,.085,24),meleeDarkMetal);
+    body.position.set(.25,-.08,-.88);
+    body.rotation.x=Math.PI/2;
+    body.castShadow=false;
+    meleeModel.add(body);
 
- part(
-  darkSteel,
-  0.25, -0.10, -0.83 - length * 0.36,
-  thickness, 0.035, length * 0.62
- );
-}
-if(weapon.type === 'knife') {
-  blade(0.66, 0.17, 0.035);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(.175,24),meleeMetal);
+    face.position.set(.25,-.08,-.835);
+    face.castShadow=false;
+    meleeModel.add(face);
 
-part(
-  darkSteel,
-  0.25, -0.095, -1.02,
-  0.035, 0.035, 0.43
-);
-part(
-  guardMaterial,
-  0.25, -0.13, -0.79,
-  0.28, 0.075, 0.09
-);
-part(
-  grip,
-  0.25, -0.32, -0.68,
-  0.13, 0.34, 0.13
-);
-for(let i=0;i < 4; i++) {
-  part(
-    darkSteel,
-    0.25, -0.22 + i * 0.065, -0.68,
-    0.14, 0.018, 0.14
-  );
-}
-part(
-  guardMaterial,
-  0.25, -0.37, -0.68,
-  0.11, 0.53, 0.11
-);
-}
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.19,.025,8,24),meleeMetal);
+    rim.position.set(.25,-.08,-.82);
+    rim.rotation.x=Math.PI/2;
+    rim.castShadow=false;
+    meleeModel.add(rim);
 
-else if (weapon.type === 'axe') { 
-part(
-  grip,
-  0.25, -0.37, -0.68,
-  0.11, 0.53, 0.11
-);
-part(
-  darkSteel,
-  0.25, -0.055, -0.68,
-  0.11, 0.53, 0.11
-);
-part(
-  steel,
-  0.25, -0.205, -0.055, -0.68,
-  0.045, 0.19, 0.2
-);
-part(
-  steel,
-  0.25 + 0.205, -0.055, -0.68,
-  0.045, 0.19, 0.2
-);
-part(
-  guardMaterial,
-  0.25, -0.19, -0.68,
-  0.15, 0.08, 0.15
-);
-for(let i=0;i < 5; i++) {
-  part(
-    darkSteel,
-    0.25, -0.25 + i * 0.075, -0.68,
-    0.12, 0.018, 0.12
-  );
+    part(meleeHandle,.25,-.08,-.51,.10,.10,.56);
+    part(meleeDarkMetal,.25,-.08,-.78,.13,.12,.13);
+  } else if (weapon.type === 'katana') {
+    addBlade(.92,.075,.025,-.025);
+    part(meleeDarkMetal,.25,-.13,-.79,.27,.055,.08);
+    part(meleeHandle,.25,-.35,-.68,.10,.52,.10);
+    for(let i=0;i<7;i++) part(meleeWrap,.25,-.16-i*.06,-.68,.115,.015,.115);
+    part(meleeMetal,.25,-.62,-.68,.12,.045,.12);
   }
-}
-else if (weapon.type === 'pan') {
-  // Thân Chảo
-  const panBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.085, 32), darkSteel);
-  panBody.position.set(0.25, -0.07, -0.88);
-  panBody.rotation.x = Math.PI / 2;
-  meleeModel.add(panBody);
-// Mặt Chảo
-  const panFace = new THREE.Mesh(new THREE.CircleGeometry(0.175, 32), steel);
-  panFace.position.set(0.25, -0.07, -0.83);
-  meleeModel.add(panFace);
-// Vành Chảo
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.195, 0.025, 8, 32), guardMaterial);
-  rim.position.set(0.25, -0.07, -0.82);
-  meleeModel.add(rim);
-  part(
-    grip,
-    0.25, -0.07, -0.53,
-    0.105, 0.095, 0.52
-  );
-  part(
-    guardMaterial,
-    0.25, -0.07, -0.78,
-    0.13, 0.12, 0.13
-  );
-  const hole = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.009, 6, 16), guardMaterial);
-  hole.position.set(0.25, -0.07, -0.27);
-  meleeModel.add(hole);
-}
-else if (weapon.type === 'katana') {
-  blade(0.75, 0.08, 0.02);
-  part(
-    grip,
-    0.25, -0.32, -0.68,
-    0.11, 0.53, 0.11
-  );
-  part(
-    guardMaterial,
-    0.25, -0.13, -0.79,
-    0.28, 0.075, 0.09
-  );
-  part(
-    steel,
-    0.25, -0.095, -1.02,
-    0.035, 0.035, 0.43
-  )
-  for(let i=0;i < 4; i++) {
-    part(
-      darkSteel,
-      0.25, -0.22 + i * 0.065, -0.68,
-      0.14, 0.018, 0.14
-    );
-  }
+
+  meleeModel.position.set(0,0,0);
+  meleeModel.rotation.set(0,0,0);
+  meleeModel.visible=meleeMode;
+  weaponModel.visible=!meleeMode;
 }
 
-meleeModel.position.set(0, 0, 0);
-meleeModel.rotation.set(0, 0, 0);
-meleeModel.visible = meleeMode;
-weaponModel.visible = !meleeMode;
-}
 function selectMeleeWeapon(index) {
-  if (index < 0 || index >= meleeWeapons.length) return;
-  selectedMeleeIndex = index;
-  meleeMode= true;
-  weaponModel.visible = false;
-  buildMeleeModel();
-  weaponLabel.textContent = ` 3 / ${meleeWeapons[index].name}`;
-  ammoWeaponLabel.textContent = meleeWeapons[index].name;
-  
-  ammoCurrentLabel.textContent = '∞';
-  ammoCapacityLabel.textContent = '∞';
-  ammoDisplay.classList.remove('ammo-low' , 'is-reloading');
+  const weapon=meleeWeapons[index];
+  if(!weapon || !ownedMeleeWeapons.has(weapon.name)) return;
 
+  selectedMeleeIndex=index;
+  equippedSlots.melee=index;
+  activeWeaponSlot='melee';
+  meleeMode=true;
+
+  if(boltCycle) resetBoltAction();
+  isReloading=false;
+  reloadTimer=0;
+  reloadWeapon=-1;
+  shooting=false;
+
+  weaponModel.visible=false;
+  buildMeleeModel();
+
+  weaponLabel.textContent=`3 / ${weapon.name}`;
+  ammoWeaponLabel.textContent=weapon.name;
+  ammoCurrentLabel.textContent='∞';
+  ammoCapacityLabel.textContent='∞';
+  ammoDisplay.classList.remove('ammo-low','is-reloading');
+  reloadStatus.textContent='CẬN CHIẾN';
+
+  saveLoadout();
+  armoryStatus.textContent=getLoadoutStatus();
   updateAimUI();
+  updateAmmoUI();
+  renderArmory();
 }
+
 function resetBoltAction() {
   boltCycle = null;
   boltArm.position.copy(boltArmRest);
@@ -645,67 +545,28 @@ const weapons = [
 // TODO :Check the actual damage of the Sawed-off and Desert Eagle. 
 ];
 const meleeWeapons = [
-  { 
-    name: 'Dao',
-    category:' Melee',
-    damage: 30,
-    range: 1.0,
-    cooldown: 0.2,
-    cost: 0,
-    owned: true,
-    type: 'knife'
-  },
-  { 
-    name: 'Búa', 
-    category: 'Melee',
-    damage: 50, 
-    range: 1.3, 
-    cooldown: 0.35, 
-    cost: 300, 
-    type: 'axe' 
-  },
-  {
-    name: 'Chảo',
-    category: 'Melee',
-    damage: 40,
-    range: 1.5,
-    cooldown: 0.5,
-    cost: 400,
-    type: 'pan'
-  },
-  {
-    name: 'Katana',
-    category: 'Melee',
-    damage: 35,
-    range: 1.2,
-    cooldown: 0.4,
-    cost: 250,
-    type: 'katana'
-  }
+  { name:'Dao', category:'Melee', damage:30, range:1.05, cooldown:.24, cost:0, owned:true, type:'knife' },
+  { name:'Búa', category:'Melee', damage:50, range:1.2, cooldown:.38, cost:300, type:'axe' },
+  { name:'Katana', category:'Melee', damage:60, range:1.45, cooldown:.46, cost:650, type:'katana' },
+  { name:'Chảo', category:'Melee', damage:75, range:1.3, cooldown:.58, cost:450, type:'pan' }
 ];
-let selectedMeleeIndex = 0;
-let meleeMode = false;
-let meleeCooldown = 0;
-let meleeSwing = 0;
 
-const ownedMeleeWeapons = new Set(['DAO']);
+let selectedMeleeIndex=0;
+let meleeMode=false;
+let meleeCooldown=0;
+let meleeSwing=0;
 
+const ownedMeleeWeapons=new Set(['Dao']);
 try {
-  const saved = JSON.parse(
-    localStorage.getItem('outpost-owned-melee') || '[]'
-  );
-
-  if (Array.isArray(saved)) {
-    for (const name of saved) {
-      if (meleeWeapons.some((weapon) => weapon.name === name)) {
-        ownedMeleeWeapons.add(name);
-      }
+  const saved=JSON.parse(localStorage.getItem('outpost-owned-melee') || '[]');
+  if(Array.isArray(saved)) {
+    for(const name of saved) {
+      const normalizedName=name==='DAO' ? 'Dao' : name;
+      if(meleeWeapons.some(weapon=>weapon.name===normalizedName)) ownedMeleeWeapons.add(normalizedName);
     }
   }
-} catch {
-  // Giữ dao làm vũ khí mặc định.
-}
-// End of Calling
+} catch {}
+
 function magazineCapacity(weapon) {
   if (weapon.name === 'Sawed-off' || weapon.name === 'S686') return 2;
   if (weapon.category === 'Heavy Weapons') return 100;
@@ -789,9 +650,11 @@ function buildWeaponModel(weapon) {
 
 const defaultLoadout = {
   primary: 0,
-  pistol: weapons.findIndex((weapon) => weapon.name === 'P92')
+  pistol: weapons.findIndex((weapon) => weapon.name === 'P92'),
+  melee: meleeWeapons.findIndex((weapon) => weapon.name === 'Dao')
 };
 const equippedSlots = { ...defaultLoadout };
+
 for (const slot of ['primary', 'pistol']) {
   const storedIndex = weapons.findIndex((weapon) => weapon.name === savedLoadout[slot]);
   if (storedIndex >= 0 && ownedWeapons.has(weapons[storedIndex].name) &&
@@ -799,6 +662,12 @@ for (const slot of ['primary', 'pistol']) {
     equippedSlots[slot] = storedIndex;
   }
 }
+
+const storedMeleeIndex = meleeWeapons.findIndex((weapon) => weapon.name === savedLoadout.melee);
+if (storedMeleeIndex >= 0 && ownedMeleeWeapons.has(meleeWeapons[storedMeleeIndex].name)) {
+  equippedSlots.melee = storedMeleeIndex;
+}
+
 let activeWeaponSlot = 'primary';
 let selectedWeapon = equippedSlots.primary;
 const weaponLabel = document.querySelector('#weapon-label');
@@ -857,6 +726,17 @@ function saveBalance() {
 }
 
 function updateAmmoUI() {
+  if (meleeMode) {
+    const melee = meleeWeapons[equippedSlots.melee];
+    if (!melee) return;
+    ammoWeaponLabel.textContent = melee.name;
+    ammoCurrentLabel.textContent = '∞';
+    ammoCapacityLabel.textContent = '∞';
+    ammoDisplay.classList.remove('ammo-low','is-reloading');
+    reloadStatus.textContent = 'CẬN CHIẾN';
+    return;
+  }
+
   const weapon = weapons[selectedWeapon];
   const capacity = magazineCapacity(weapon);
   const ammo = magazineAmmo.get(weapon.name) ?? capacity;
@@ -873,7 +753,7 @@ function updateAmmoUI() {
 }
 
 function updateAimUI() {
-  const scoped = aiming && weapons[selectedWeapon].category === 'Sniper Rifles';
+  const scoped = !meleeMode && aiming && weapons[selectedWeapon].category === 'Sniper Rifles';
   document.body.classList.toggle('scope-active', scoped);
   scopeOverlay.setAttribute('aria-hidden', String(!scoped));
 }
@@ -1093,158 +973,187 @@ function saveLoadout() {
   try {
     localStorage.setItem('outpost-loadout', JSON.stringify({
       primary: weapons[equippedSlots.primary].name,
-      pistol: weapons[equippedSlots.pistol].name
+      pistol: weapons[equippedSlots.pistol].name,
+      melee: meleeWeapons[equippedSlots.melee].name
     }));
-  } catch {
-    // Keep the current two-slot loadout for this session when storage is unavailable.
-  }
+  } catch {}
+}
+
+function getLoadoutStatus() {
+  return `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}  ·  CẬN CHIẾN: ${meleeWeapons[equippedSlots.melee].name}`;
 }
 
 function selectWeapon(index) {
   if (!weapons[index] || !ownedWeapons.has(weapons[index].name) || !Object.values(equippedSlots).includes(index)) return;
+
   if (selectedWeapon !== index && boltCycle) resetBoltAction();
   if (selectedWeapon !== index && isReloading) {
-    isReloading = false;
-    reloadTimer = 0;
-    reloadWeapon = -1;
+    isReloading=false;
+    reloadTimer=0;
+    reloadWeapon=-1;
   }
-  selectedWeapon = index;
-  activeWeaponSlot = weapons[index].category === 'Pistols' ? 'pistol' : 'primary';
+
+  selectedWeapon=index;
+  activeWeaponSlot=weapons[index].category==='Pistols' ? 'pistol' : 'primary';
+  meleeMode=false;
+  meleeModel.visible=false;
+  weaponModel.visible=true;
+
   weaponModel.clear();
-  weaponModel.position.set(0, 0, 0);
-  buildWeaponModel(weapons[selectedWeapon]);
-  const label = `${activeWeaponSlot === 'primary' ? 1 : 2} / ${weapons[selectedWeapon].name}`;
-  weaponLabel.textContent = label;
-  armoryStatus.textContent = `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}`;
+  weaponModel.position.set(0,0,0);
+  buildWeaponModel(selectedWeapon >= 0 ? weapons[selectedWeapon] : weapons[index]);
+
+  const slotNumber=activeWeaponSlot==='primary' ? 1 : 2;
+  weaponLabel.textContent=`${slotNumber} / ${weapons[selectedWeapon].name}`;
+  armoryStatus.textContent=getLoadoutStatus();
   updateAimUI();
   updateAmmoUI();
   renderArmory();
 }
 
 function equipWeapon(index) {
-  if (!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
-  const slot = weapons[index].category === 'Pistols' ? 'pistol' : 'primary';
-  equippedSlots[slot] = index;
+  if(!weapons[index] || !ownedWeapons.has(weapons[index].name)) return;
+  const slot=weapons[index].category==='Pistols' ? 'pistol' : 'primary';
+  equippedSlots[slot]=index;
   saveLoadout();
   selectWeapon(index);
 }
 
+function equipMeleeWeapon(index) {
+  const weapon=meleeWeapons[index];
+  if(!weapon || !ownedMeleeWeapons.has(weapon.name)) return;
+  equippedSlots.melee=index;
+  saveLoadout();
+  selectMeleeWeapon(index);
+}
+
 function renderArmory() {
   armoryCategories.replaceChildren();
+
   for (const category of weaponCategories) {
-    const section = document.createElement('section');
-    section.className = 'armory-category';
-    const heading = document.createElement('h3');
-    heading.textContent = categoryLabels[category];
-    const items = weapons.map((weapon, index) => ({ weapon, index })).filter(({ weapon }) => weapon.category === category);
-    const count = document.createElement('span');
-    count.textContent = `${items.length} ITEMS`;
+    const section=document.createElement('section');
+    section.className='armory-category';
+    const heading=document.createElement('h3');
+    heading.textContent=categoryLabels[category];
+
+    const items=weapons.map((weapon,index)=>({weapon,index})).filter(({weapon})=>weapon.category===category);
+    const count=document.createElement('span');
+    count.textContent=`${items.length} ITEMS`;
     heading.append(count);
     section.append(heading);
-    const list = document.createElement('div');
-    list.className = 'armory-list';
-    for (const { weapon, index } of items) {
-      const card = document.createElement('article');
-      const isEquipped = Object.values(equippedSlots).includes(index);
-      const isSelected = selectedWeapon === index;
-      const slotLabel = weapon.category === 'Pistols' ? 'Ô SÚNG LỤC' : 'Ô CHÍNH';
-      card.className = `weapon-card${isEquipped ? ' equipped' : ''}`;
-      card.dataset.category = category;
-      const icon = document.createElement('span');
-      icon.className = 'weapon-icon';
-      icon.setAttribute('aria-hidden', 'true');
-      const info = document.createElement('span');
-      info.className = 'weapon-info';
-      const name = document.createElement('strong');
-      name.className = 'weapon-name';
-      name.textContent = weapon.name;
-      const meta = document.createElement('span');
-      meta.className = 'weapon-meta';
-      meta.textContent = `${weapon.damage} DAMAGE · ${magazineCapacity(weapon)} VIÊN · $${weapon.cost.toLocaleString('en-US')}`;
-      info.append(name, meta);
-      const button = document.createElement('button');
-      button.className = 'weapon-action';
-      button.type = 'button';
-      button.dataset.weapon = weapon.name;
-      const isOwned = ownedWeapons.has(weapon.name);
-      const canAfford = playerBalance >= weapon.cost;
-      button.textContent = isSelected ? 'ĐANG DÙNG' : isEquipped ? `CHỌN ${slotLabel}` : isOwned ? `TRANG BỊ ${slotLabel}` : canAfford ? `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}` : 'KHÔNG ĐỦ TIỀN';
-      button.disabled = isSelected || (!isOwned && !canAfford);
-      card.append(icon, info, button);
+
+    const list=document.createElement('div');
+    list.className='armory-list';
+
+    for (const {weapon,index} of items) {
+      const card=document.createElement('article');
+      const slot=weapon.category==='Pistols' ? 'pistol' : 'primary';
+      const isEquipped=equippedSlots[slot]===index;
+      const isSelected=!meleeMode && selectedWeapon===index;
+      const slotLabel=slot==='pistol' ? 'Ô SÚNG LỤC' : 'Ô CHÍNH';
+
+      card.className=`weapon-card${isEquipped ? ' equipped' : ''}`;
+      card.dataset.category=category;
+
+      const icon=document.createElement('span');
+      icon.className='weapon-icon';
+      icon.setAttribute('aria-hidden','true');
+
+      const info=document.createElement('span');
+      info.className='weapon-info';
+      const name=document.createElement('strong');
+      name.className='weapon-name';
+      name.textContent=weapon.name;
+      const meta=document.createElement('span');
+      meta.className='weapon-meta';
+      meta.textContent=`${weapon.damage} DAMAGE · ${magazineCapacity(weapon)} VIÊN · $${weapon.cost.toLocaleString('en-US')}`;
+      info.append(name,meta);
+
+      const button=document.createElement('button');
+      button.className='weapon-action';
+      button.type='button';
+      button.dataset.weapon=weapon.name;
+
+      const isOwned=ownedWeapons.has(weapon.name);
+      const canAfford=playerBalance>=weapon.cost;
+      button.textContent=isSelected
+        ? 'ĐANG DÙNG'
+        : isEquipped
+          ? `CHỌN ${slotLabel}`
+          : isOwned
+            ? `TRANG BỊ ${slotLabel}`
+            : canAfford
+              ? `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}`
+              : 'KHÔNG ĐỦ TIỀN';
+      button.disabled=isSelected || (!isOwned && !canAfford);
+
+      card.append(icon,info,button);
       list.append(card);
     }
-    
+
     section.append(list);
     armoryCategories.append(section);
   }
 
-  // Danh mục vũ khí cận chiến.
-  const meleeSection = document.createElement('section');
-  meleeSection.className = 'armory-category';
+  const meleeSection=document.createElement('section');
+  meleeSection.className='armory-category';
 
-  const meleeHeading = document.createElement('h3');
-  meleeHeading.textContent = 'MELEE / CẬN CHIẾN';
-
-  const meleeCount = document.createElement('span');
-  meleeCount.textContent = `${meleeWeapons.length} ITEMS`;
+  const meleeHeading=document.createElement('h3');
+  meleeHeading.textContent='MELEE / CẬN CHIẾN';
+  const meleeCount=document.createElement('span');
+  meleeCount.textContent=`${meleeWeapons.length} ITEMS`;
   meleeHeading.append(meleeCount);
+  meleeSection.append(meleeHeading);
 
-  const meleeList = document.createElement('div');
-  meleeList.className = 'armory-list';
+  const meleeList=document.createElement('div');
+  meleeList.className='armory-list';
 
-  for (const weapon of meleeWeapons) {
-    const card = document.createElement('article');
-    card.className = 'weapon-card';
-    card.dataset.category = 'Melee';
+  for(const [index,weapon] of meleeWeapons.entries()) {
+    const card=document.createElement('article');
+    const isEquipped=equippedSlots.melee===index;
+    const isSelected=meleeMode && selectedMeleeIndex===index;
 
-    const icon = document.createElement('span');
-    icon.className = 'weapon-icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.textContent =
-      weapon.type === 'knife' ? '🔪' :
-      weapon.type === 'axe' ? '🔨' :
-      weapon.type === 'pan' ? '🍳' :
-      weapon.type === 'katana' ? '🗡️' : '⚔️';
+    card.className=`weapon-card${isEquipped ? ' equipped' : ''}`;
+    card.dataset.category='Melee';
 
-    const info = document.createElement('span');
-    info.className = 'weapon-info';
+    const icon=document.createElement('span');
+    icon.className='weapon-icon';
+    icon.setAttribute('aria-hidden','true');
+    icon.textContent=weapon.type==='knife' ? '🔪' : weapon.type==='axe' ? '🔨' : weapon.type==='pan' ? '🍳' : weapon.type==='katana' ? '🗡️' : '⚔️';
 
-    const name = document.createElement('strong');
-    name.className = 'weapon-name';
-    name.textContent = weapon.name;
+    const info=document.createElement('span');
+    info.className='weapon-info';
+    const name=document.createElement('strong');
+    name.className='weapon-name';
+    name.textContent=weapon.name;
+    const meta=document.createElement('span');
+    meta.className='weapon-meta';
+    meta.textContent=`${weapon.damage} DAMAGE · TẦM ${weapon.range.toFixed(2)}M · $${weapon.cost.toLocaleString('en-US')}`;
+    info.append(name,meta);
 
-    const meta = document.createElement('span');
-    meta.className = 'weapon-meta';
-    meta.textContent =
-      `${weapon.damage} DAMAGE · CẬN CHIẾN · $${weapon.cost.toLocaleString('en-US')}`;
+    const button=document.createElement('button');
+    button.className='weapon-action';
+    button.type='button';
+    button.dataset.melee=weapon.name;
 
-    info.append(name, meta);
-
-    const button = document.createElement('button');
-    button.className = 'weapon-action';
-    button.type = 'button';
-    button.dataset.melee = weapon.name;
-
-    const isOwned = ownedMeleeWeapons.has(weapon.name);
-    const isSelected =
-      meleeMode &&
-      meleeWeapons[selectedMeleeIndex]?.name === weapon.name;
-
-    button.textContent = isSelected
+    const isOwned=ownedMeleeWeapons.has(weapon.name);
+    const canAfford=playerBalance>=weapon.cost;
+    button.textContent=isSelected
       ? 'ĐANG DÙNG'
-      : isOwned
-        ? 'TRANG BỊ'
-        : playerBalance >= weapon.cost
-          ? `MUA · $${weapon.cost.toLocaleString('en-US')}`
-          : 'KHÔNG ĐỦ TIỀN';
+      : isEquipped
+        ? 'CHỌN Ô CẬN CHIẾN'
+        : isOwned
+          ? 'TRANG BỊ Ô CẬN CHIẾN'
+          : canAfford
+            ? `MUA & TRANG BỊ · $${weapon.cost.toLocaleString('en-US')}`
+            : 'KHÔNG ĐỦ TIỀN';
+    button.disabled=isSelected || (!isOwned && !canAfford);
 
-    button.disabled = isSelected || (!isOwned && playerBalance < weapon.cost);
-
-    card.append(icon, info, button);
+    card.append(icon,info,button);
     meleeList.append(card);
   }
 
-  meleeSection.append(meleeHeading, meleeList);
+  meleeSection.append(meleeList);
   armoryCategories.append(meleeSection);
 }
 
@@ -1263,77 +1172,56 @@ function openArmory(open) {
 
 
 function buyOrEquipWeapon(name) {
-  // Xử lý vũ khí cận chiến trước.
-  const meleeIndex = meleeWeapons.findIndex(
-    (weapon) => weapon.name === name
-  );
+  const meleeIndex=meleeWeapons.findIndex(weapon=>weapon.name===name);
 
-  if (meleeIndex >= 0) {
-    const weapon = meleeWeapons[meleeIndex];
+  if(meleeIndex>=0) {
+    const weapon=meleeWeapons[meleeIndex];
 
-    if (!ownedMeleeWeapons.has(name)) {
-      if (playerBalance < weapon.cost) {
-        armoryStatus.textContent =
-          `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
+    if(!ownedMeleeWeapons.has(name)) {
+      if(playerBalance<weapon.cost) {
+        armoryStatus.textContent=`KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
         return;
       }
 
-      playerBalance -= weapon.cost;
+      playerBalance-=weapon.cost;
       ownedMeleeWeapons.add(name);
       saveBalance();
 
       try {
-        localStorage.setItem(
-          'outpost-owned-melee',
-          JSON.stringify([...ownedMeleeWeapons])
-        );
-      } catch {
-        // Vẫn giữ quyền sở hữu trong phiên hiện tại.
-      }
+        localStorage.setItem('outpost-owned-melee',JSON.stringify([...ownedMeleeWeapons]));
+      } catch {}
     }
 
-    selectMelee(meleeIndex);
-    armoryStatus.textContent = `${name} ĐANG ĐƯỢC TRANG BỊ`;
+    equipMeleeWeapon(meleeIndex);
+    armoryStatus.textContent=getLoadoutStatus();
     renderArmory();
     return;
   }
 
-  // Giữ nguyên cơ chế mua và trang bị súng.
-  const index = weapons.findIndex(
-    (weapon) => weapon.name === name
-  );
+  const index=weapons.findIndex(weapon=>weapon.name===name);
+  if(index<0) return;
 
-  if (index < 0) return;
-
-  const weapon = weapons[index];
-
-  if (!ownedWeapons.has(name)) {
-    if (playerBalance < weapon.cost) {
-      armoryStatus.textContent =
-        `KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
+  const weapon=weapons[index];
+  if(!ownedWeapons.has(name)) {
+    if(playerBalance<weapon.cost) {
+      armoryStatus.textContent=`KHÔNG ĐỦ TIỀN ĐỂ MUA ${name}`;
       return;
     }
-
-    playerBalance -= weapon.cost;
+    playerBalance-=weapon.cost;
     ownedWeapons.add(name);
     saveBalance();
   }
 
   try {
-    localStorage.setItem(
-      'outpost-owned-weapons',
-      JSON.stringify([...ownedWeapons])
-    );
-  } catch {
-    // Giữ quyền sở hữu trong phiên hiện tại.
-  }
+    localStorage.setItem('outpost-owned-weapons',JSON.stringify([...ownedWeapons]));
+  } catch {}
 
   equipWeapon(index);
   renderArmory();
 }
 
 function startReload() {
-  if (!started || armoryOpen || isReloading || boltCycle) return;
+  if (!started || armoryOpen || meleeMode || isReloading || boltCycle) return;
   const weapon = weapons[selectedWeapon];
   const capacity = magazineCapacity(weapon);
   if ((magazineAmmo.get(weapon.name) ?? capacity) >= capacity) return;
@@ -1346,7 +1234,7 @@ function startReload() {
 
 buildWeaponModel(weapons[selectedWeapon]);
 weaponLabel.textContent = `1 / ${weapons[selectedWeapon].name}`;
-armoryStatus.textContent = `Ô CHÍNH: ${weapons[equippedSlots.primary].name}  ·  SÚNG LỤC: ${weapons[equippedSlots.pistol].name}`;
+armoryStatus.textContent = getLoadoutStatus();
 updateBalanceUI();
 updateAmmoUI();
 renderArmory();
@@ -1747,14 +1635,25 @@ function toggleCrouch() {
 }
 
 function switchWeaponSlot(slot) {
-  if (!started || armoryOpen || !['primary', 'pistol'].includes(slot)) return;
+  if(!started || armoryOpen) return;
+
+  if(slot==='melee') {
+    selectMeleeWeapon(equippedSlots.melee);
+    return;
+  }
+
+  if(!['primary','pistol'].includes(slot)) return;
   selectWeapon(equippedSlots[slot]);
 }
 
 function cycleWeapon(direction) {
-  switchWeaponSlot(activeWeaponSlot === 'primary' ? 'pistol' : 'primary');
-}
+  if(!started || armoryOpen) return;
 
+  const slots=['primary','pistol','melee'];
+  const current=Math.max(0,slots.indexOf(activeWeaponSlot));
+  const next=(current+(direction>0 ? 1 : -1)+slots.length)%slots.length;
+  switchWeaponSlot(slots[next]);
+}
 
 function handleArmoryClick(event) {
   const meleeButton = event.target.closest('[data-melee]');
@@ -1847,28 +1746,17 @@ addEventListener('keydown', (event) => {
   if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space"].includes(event.code)) event.preventDefault();
   
 if (event.code === 'Digit1') {
-  meleeMode = false;
-  weaponModel.visible = true;
-  meleeModel.visible = false;
-  switchWeaponSlot('primary');
-}
+    switchWeaponSlot('primary');
+  }
 
-if (event.code === 'Digit2') {
-  meleeMode = false;
-  weaponModel.visible = true;
-  meleeModel.visible = false;
-  switchWeaponSlot('pistol');
-}
+  if (event.code === 'Digit2') {
+    switchWeaponSlot('pistol');
+  }
 
-if (event.code === 'Digit3') {
-  selectMelee(selectedMeleeIndex);
-}
+  if (event.code === 'Digit3') {
+    switchWeaponSlot('melee');
+  }
 
-if (event.code === 'KeyV' && !event.repeat) {
-  selectMelee(
-    (selectedMeleeIndex + 1) % meleeWeapons.length
-  );
-}
   if (event.code === 'KeyC' && !event.repeat) toggleCrouch();
   if (event.code === 'Space' && started && grounded && !event.repeat) {
     verticalVelocity = 6.4;
@@ -1974,7 +1862,7 @@ function animate() {
   const leanAmount = aiming ? .28 : .42;
   camera.position.x += (leanInput * leanAmount - camera.position.x) * Math.min(1, delta * 9);
   camera.rotation.z += (leanInput * -.14 - camera.rotation.z) * Math.min(1, delta * 9);
-  const targetFov = aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72;
+  const targetFov = meleeMode ? 72 : (aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72);
   const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 9, delta);
   if (Math.abs(nextFov - camera.fov) > .01) {
     camera.fov = nextFov;
