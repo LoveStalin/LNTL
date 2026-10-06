@@ -408,78 +408,148 @@ const boltHandleRest = new THREE.Vector3(.39, -.15, -.88);
 const meleeModel = new THREE.Group();
 viewModel.add(meleeModel);
 
-const meleeMetal = new THREE.MeshStandardMaterial({ color:'#737a80', metalness:.78, roughness:.28 });
-const meleeDarkMetal = new THREE.MeshStandardMaterial({ color:'#30353a', metalness:.7, roughness:.34 });
-const meleeHandle = new THREE.MeshStandardMaterial({ color:'#4a3020', roughness:.82 });
-const meleeWrap = new THREE.MeshStandardMaterial({ color:'#252a2d', roughness:.88 });
+const meleeMetal = new THREE.MeshStandardMaterial({ color:'#9aa0a6', metalness:.9, roughness:.22 });
+const meleeEdge = new THREE.MeshStandardMaterial({ color:'#d9dde0', metalness:.96, roughness:.13 });
+const meleeDarkMetal = new THREE.MeshStandardMaterial({ color:'#292d30', metalness:.82, roughness:.3 });
+const meleeHandle = new THREE.MeshStandardMaterial({ color:'#3b2417', roughness:.72 });
+const meleeGrip = new THREE.MeshStandardMaterial({ color:'#171a1c', roughness:.9 });
+const meleeWood = new THREE.MeshStandardMaterial({ color:'#684126', roughness:.88 });
+const meleePan = new THREE.MeshStandardMaterial({ color:'#25282a', metalness:.72, roughness:.3 });
+const meleePanInner = new THREE.MeshStandardMaterial({ color:'#151718', metalness:.42, roughness:.42 });
 
 function buildMeleeModel() {
   meleeModel.clear();
   const weapon = meleeWeapons[selectedMeleeIndex];
   if (!weapon) return;
 
-  const part = (material,x,y,z,sx,sy,sz) => cube(meleeModel,material,x,y,z,sx,sy,sz,false);
+  const addMesh = (geometry, material, x=.25, y=0, z=-.8, rotationX=0, rotationY=0, rotationZ=0) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rotationX, rotationY, rotationZ);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    meleeModel.add(mesh);
+    return mesh;
+  };
 
-  const addBlade = (length,width,thickness,curve=0) => {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(width,thickness,length),meleeMetal);
-    blade.position.set(.25,-.08,-.82-length*.42);
-    blade.rotation.y = curve;
-    blade.castShadow = false;
-    meleeModel.add(blade);
+  const addPart = (material, x, y, z, sx, sy, sz, rotationZ=0) => {
+    const mesh = cube(meleeModel, material, x, y, z, sx, sy, sz, false);
+    mesh.rotation.z = rotationZ;
+    return mesh;
+  };
 
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(width*.72,width*1.55,4),meleeMetal);
-    tip.rotation.x = Math.PI/2;
-    tip.position.set(.25,-.08,-.82-length-width*.55);
-    tip.castShadow = false;
-    meleeModel.add(tip);
+  const addGrip = (x, y, z, length, radius=.065, material=meleeHandle, rotationZ=0) => {
+    return addMesh(
+      new THREE.CylinderGeometry(radius, radius * 1.08, length, 10),
+      material,
+      x, y, z, 0, 0, rotationZ
+    );
+  };
+
+  const addBlade = ({ length, width, thickness, z=-1.03, curve=0, tip=.14 }) => {
+    addMesh(
+      new THREE.BoxGeometry(width, thickness, Math.max(.1, length - tip)),
+      meleeMetal, .25, -.08, z + tip * .5, 0, curve, 0
+    );
+
+    const point = addMesh(
+      new THREE.ConeGeometry(width * .5, tip * 1.65, 4),
+      meleeEdge, .25, -.08, z - length * .5 + tip * .35, -Math.PI / 2, curve, 0
+    );
+    point.scale.x = .82;
+
+    addPart(meleeEdge, .25, -.108, z + .01, Math.max(.018, width * .2), .012, Math.max(.08, length - tip * 1.5));
   };
 
   if (weapon.type === 'knife') {
-    addBlade(.58,.12,.035,-.035);
-    part(meleeDarkMetal,.25,-.13,-.78,.28,.07,.09);
-    part(meleeHandle,.25,-.31,-.68,.12,.34,.12);
-    for(let i=0;i<5;i++) part(meleeWrap,.25,-.18-i*.065,-.68,.135,.018,.135);
-    part(meleeDarkMetal,.25,-.51,-.68,.14,.05,.14);
+    // Compact tactical knife: steel blade, spine detail, guard, textured grip and pommel.
+    addBlade({ length:.63, width:.145, thickness:.045, z:-1.02, curve:-.035, tip:.15 });
+    addPart(meleeDarkMetal, .25, -.125, -.765, .30, .07, .10);
+    addPart(meleeDarkMetal, .25, -.17, -.695, .07, .11, .12);
+    addGrip(.25, -.34, -.69, .36, .073, meleeGrip);
+    for (let i=0; i<6; i++) {
+      addPart(meleeHandle, .25, -.20 - i * .055, -.69, .15, .017, .15, .28);
+    }
+    addMesh(new THREE.CylinderGeometry(.082,.082,.07,10), meleeDarkMetal, .25,-.535,-.69);
   } else if (weapon.type === 'axe') {
-    part(meleeHandle,.25,-.35,-.68,.105,.58,.105);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(.42,.22,.2),meleeMetal);
-    head.position.set(.25,-.08,-.68);
-    head.castShadow=false;
-    meleeModel.add(head);
-    part(meleeDarkMetal,.25,-.19,-.68,.14,.08,.14);
-    for(let i=0;i<5;i++) part(meleeWrap,.25,-.19-i*.075,-.68,.125,.018,.125);
+    // Heavy hand axe with a real steel head silhouette and wooden haft.
+    addGrip(.25, -.38, -.68, .72, .052, meleeWood, -.045);
+
+    const axeShape = new THREE.Shape();
+    axeShape.moveTo(-.05, .08);
+    axeShape.lineTo(.02, .16);
+    axeShape.lineTo(.27, .15);
+    axeShape.bezierCurveTo(.36, .10, .39, -.02, .36, -.12);
+    axeShape.bezierCurveTo(.31, -.23, .19, -.27, .07, -.22);
+    axeShape.lineTo(-.03, -.13);
+    axeShape.lineTo(-.08, -.04);
+    axeShape.closePath();
+
+    const axeHead = addMesh(
+      new THREE.ExtrudeGeometry(axeShape, {
+        depth:.13,
+        steps:1,
+        bevelEnabled:true,
+        bevelThickness:.018,
+        bevelSize:.018,
+        bevelSegments:2
+      }),
+      meleeMetal, .02, -.08, -.75
+    );
+    axeHead.rotation.set(0,0,0);
+    axeHead.castShadow = false;
+
+    addPart(meleeDarkMetal, .25, -.08, -.735, .075, .14, .16);
+    addMesh(new THREE.CylinderGeometry(.065,.07,.08,10), meleeDarkMetal, .25,-.04,-.73,0,0,-.045);
+    addPart(meleeEdge, .39, -.08, -.75, .025, .18, .13);
+    addPart(meleeHandle, .25, -.22, -.69, .09, .025, .09, -.045);
+    addMesh(new THREE.CylinderGeometry(.07,.075,.08,10), meleeDarkMetal, .25,-.765,-.69,0,0,-.045);
   } else if (weapon.type === 'pan') {
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(.22,.19,.085,24),meleeDarkMetal);
-    body.position.set(.25,-.08,-.88);
-    body.rotation.x=Math.PI/2;
-    body.castShadow=false;
-    meleeModel.add(body);
+    // Cast-iron frying pan: deep bowl, visible inner cooking surface, thick rim and angled handle.
+    const panBody = addMesh(
+      new THREE.CylinderGeometry(.235,.215,.11,32),
+      meleePan, .25, -.08, -.92, Math.PI / 2
+    );
 
-    const face = new THREE.Mesh(new THREE.CircleGeometry(.175,24),meleeMetal);
-    face.position.set(.25,-.08,-.835);
-    face.castShadow=false;
-    meleeModel.add(face);
+    addMesh(
+      new THREE.CylinderGeometry(.198,.198,.018,32),
+      meleePanInner, .25, -.08, -.852, Math.PI / 2
+    );
 
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(.19,.025,8,24),meleeMetal);
-    rim.position.set(.25,-.08,-.82);
-    rim.rotation.x=Math.PI/2;
-    rim.castShadow=false;
-    meleeModel.add(rim);
+    addMesh(
+      new THREE.TorusGeometry(.205,.027,10,32),
+      meleeMetal, .25, -.08, -.85
+    );
 
-    part(meleeHandle,.25,-.08,-.51,.10,.10,.56);
-    part(meleeDarkMetal,.25,-.08,-.78,.13,.12,.13);
+    addMesh(
+      new THREE.TorusGeometry(.165,.012,8,28),
+      meleeDarkMetal, .25, -.08, -.842
+    );
+
+    addGrip(.39, -.22, -.9, .58, .055, meleePan, -.13);
+    addPart(meleeDarkMetal, .39, -.22, -.9, .13, .11, .16, -.13);
+    addMesh(new THREE.CylinderGeometry(.066,.07,.07,10), meleeDarkMetal, .49,-.43,-.9,0,0,-.13);
   } else if (weapon.type === 'katana') {
-    addBlade(.92,.075,.025,-.025);
-    part(meleeDarkMetal,.25,-.13,-.79,.27,.055,.08);
-    part(meleeHandle,.25,-.35,-.68,.10,.52,.10);
-    for(let i=0;i<7;i++) part(meleeWrap,.25,-.16-i*.06,-.68,.115,.015,.115);
-    part(meleeMetal,.25,-.62,-.68,.12,.045,.12);
+    // Long katana with tapered blade, bright cutting edge, tsuba, wrapped handle and pommel.
+    addBlade({ length:1.05, width:.095, thickness:.035, z:-1.12, curve:-.018, tip:.18 });
+    addPart(meleeEdge, .25, -.105, -1.11, .025, .012, .78);
+
+    addMesh(
+      new THREE.CylinderGeometry(.145,.145,.055,20),
+      meleeDarkMetal, .25, -.08, -.67, Math.PI / 2
+    );
+
+    addGrip(.25, -.36, -.60, .58, .052, meleeGrip);
+    for (let i=0; i<8; i++) {
+      addPart(meleeHandle, .25, -.105 - i * .067, -.60, .115, .018, .115, i % 2 ? -.38 : .38);
+    }
+    addMesh(new THREE.CylinderGeometry(.068,.068,.07,12), meleeDarkMetal, .25,-.68,-.60);
   }
 
   meleeModel.position.set(0,0,0);
   meleeModel.rotation.set(0,0,0);
-  meleeModel.visible=meleeMode;
-  weaponModel.visible=!meleeMode;
+  meleeModel.visible = meleeMode;
+  weaponModel.visible = !meleeMode;
 }
 
 function selectMeleeWeapon(index) {
