@@ -232,3 +232,25 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
 .team-score-label { color:var(--muted); font-size:9px; letter-spacing:1.2px; }
 .team-1 { --team-color:#c8f36a; } .team-2 { --team-color:#ff6b6b; } .team-3 { --team-color:#67c8ff; } .team-4 { --team-color:#c39aff; }
 @media(max-width:560px) { .team-scoreboard { top:58px; gap:2px; padding:3px; } .team-score { min-width:48px; padding:5px 7px; } .team-score strong { font-size:18px; } .team-score-label { font-size:8px; } }
+
+
+/* Multiplayer faction selection */
+.mp-teams { margin-top:10px; padding-top:10px; border-top:1px solid rgba(237,240,232,.12); }
+.mp-teams[hidden] { display:none; }
+.mp-teams-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; }
+.mp-teams-title span { color:var(--ink); font-size:10px; letter-spacing:1.3px; font-weight:700; }
+.mp-teams-title small { color:var(--muted); font-size:9px; }
+.mp-team-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.mp-team-card { min-width:0; min-height:76px; padding:8px; display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; border:1px solid rgba(237,240,232,.14); border-top:2px solid var(--team-color); background:rgba(9,13,11,.7); color:var(--ink); cursor:pointer; }
+.mp-team-card:hover { border-color:var(--team-color); background:rgba(255,255,255,.035); }
+.mp-team-card.selected { box-shadow:inset 0 0 0 1px var(--team-color); background:rgba(255,255,255,.055); }
+.mp-team-card.full { opacity:.42; cursor:not-allowed; }
+.mp-team-card strong { font-size:10px; letter-spacing:1px; }
+.mp-team-card span { font-size:17px; font-variant-numeric:tabular-nums; }
+.mp-team-card small { color:var(--muted); font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.mp-team-card.team-1 { --team-color:#c8f36a; }
+.mp-team-card.team-2 { --team-color:#ff6b6b; }
+.mp-team-card.team-3 { --team-color:#67c8ff; }
+.mp-team-card.team-4 { --team-color:#c39aff; }
+#mp-team-status { margin:7px 0 0; color:var(--muted); font-size:10px; line-height:1.4; }
+@media(max-width:560px) { .mp-team-grid { gap:4px; } .mp-team-card { min-height:70px; padding:7px; } }
