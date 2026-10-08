@@ -1512,27 +1512,19 @@ function buildRemoteWeapon(remote, state) {
 }
 function hitRemotePlayer(start, end) {
   let nearest = null;
-  const segment = end.clone().sub(start);
-  const lengthSq = segment.lengthSq();
-  if (lengthSq === 0) return null;
-  const segmentLength = Math.sqrt(lengthSq);
   for (const [id, group] of remotePlayers) {
-    if (!group.visible) continue;
-    const center = group.position;
-    // Wider torso/head/legs capsules make hits reliable against the low-poly model.
-    const parts = [
-      { point: new THREE.Vector3(center.x, center.y + 1.62, center.z), radius: .34 },
-      { point: new THREE.Vector3(center.x, center.y + 1.15, center.z), radius: .52 },
-      { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .38 },
-    ];
-    for (const part of parts) {
-      const projection = part.point.clone().sub(start).dot(segment) / lengthSq;
-      if (projection < 0 || projection > 1) continue;
-      const closest = start.clone().addScaledVector(segment, projection);
-      if (closest.distanceTo(part.point) <= part.radius) {
-        const distance = projection * segmentLength;
-        if (!nearest || distance < nearest.distance) nearest = { id, distance };
-      }
+    if (!group.visible || group.userData.dead) continue;
+    const hit = getBodyPartHit(start, end, group, group.rotation.y);
+    if (!hit) continue;
+    const segment = end.clone().sub(start);
+    const distance = hit.fraction * segment.length();
+    if (!nearest || distance < nearest.distance) {
+      nearest = {
+        id,
+        distance,
+        bodyPart: hit.name,
+        multiplier: hit.multiplier
+      };
     }
   }
   return nearest;
@@ -1661,10 +1653,39 @@ function hideDeathScreen() {
 }
 
 window.addEventListener('lntl:player-damage', (event) => {
-  const { victimId, health, alive, attackerNickname } = event.detail || {};
+  const {
+    victimId,
+    health,
+    alive,
+    attackerNickname,
+    attackerId,
+    bodyPart,
+    damage,
+    attackerPosition
+  } = event.detail || {};
+
   if (victimId === window.lntlMultiplayer?.getPlayerId()) {
     playerHealth = Math.max(0, Number(health) || 0);
+
+    let incomingDirection = null;
+    if (attackerPosition && [attackerPosition.x, attackerPosition.y, attackerPosition.z].every(Number.isFinite)) {
+      incomingDirection = new THREE.Vector3(
+        attackerPosition.x - player.position.x,
+        attackerPosition.y - player.position.y,
+        attackerPosition.z - player.position.z
+      );
+    } else if (attackerId) {
+      const attacker = remotePlayers.get(attackerId);
+      if (attacker) incomingDirection = attacker.position.clone().sub(player.position);
+    }
+
+    showDamageFeedback(
+      incomingDirection,
+      bodyPart || 'THÂN',
+      Math.max(1, Number(damage) || 0)
+    );
     updateCombatUI();
+
     if (alive === false) {
       playerInvulnerableTimer = 3;
       showDeathScreen(attackerNickname);
@@ -2175,6 +2196,8 @@ function shoot() {
         {
           detail: {
             victimId: hit.id,
+            bodyPart: hit.bodyPart,
+            distance: hit.distance,
             damage
           }
         }
@@ -2234,6 +2257,8 @@ function meleeAttack() {
         new CustomEvent('lntl:player-hit', {
           detail: {
             victimId: hit.id,
+            bodyPart: hit.bodyPart,
+            distance: hit.distance,
             damage: weapon.damage
           }
         })
