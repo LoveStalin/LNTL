@@ -2643,6 +2643,11 @@ function animate() {
 
 const now = performance.now();
 
+  if (playerDead && deathCountdown && deathUntil > 0) {
+    const remaining = Math.max(0, (deathUntil - now) / 1000);
+    deathCountdown.textContent = remaining.toFixed(1);
+  }
+
 for (const [id, remote] of remotePlayers) {
   const network =
     remote.userData.network;
