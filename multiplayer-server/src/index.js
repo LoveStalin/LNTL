@@ -406,7 +406,8 @@ export class RoomDurableObject {
       const z = Number(state.z);
       const yaw = Number(state.yaw);
       const pitch = Number(state.pitch);
-      if (![x, y, z, yaw, pitch].every(Number.isFinite)) return;
+       const lean = Number(state.lean ?? 0);
+      if (![x, y, z, yaw, pitch, lean].every(Number.isFinite)) return;
       // Basic sanity bounds
       if ( 
       Math.abs(x) > 30 || 
