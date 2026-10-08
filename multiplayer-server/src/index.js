@@ -460,6 +460,7 @@ export class RoomDurableObject {
       z,
       yaw,
       pitch,
+      lean,
 
       weaponSlot,
       weaponName,
