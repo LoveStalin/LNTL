@@ -1051,18 +1051,25 @@ function createRemotePlayer(id, nickname, team) {
     remoteHead
   );
 
-  head.position.y = 1.58;
-  group.add(head);
+  // Head pivot lets remote players visibly look up/down with their camera.
+  // The body keeps the network yaw; the head pivot follows the network pitch.
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 1.40, 0);
+
+  head.position.set(0, .18, 0);
+  headPivot.add(head);
 
   const helmet = new THREE.Mesh(
     new THREE.SphereGeometry(.23, 12, 8),
     mats.helmet
   );
 
-  helmet.position.set(0, 1.72, 0);
+  helmet.position.set(0, .32, 0);
   helmet.scale.y = .65;
 
-  group.add(helmet);
+  headPivot.add(helmet);
+  group.add(headPivot);
+  group.userData.headPivot = headPivot;
 
   // =========================
   // ARMS
@@ -2736,6 +2743,17 @@ for (const [id, remote] of remotePlayers) {
 
   remote.rotation.y =
     current.yaw;
+
+  // Mirror the local player's vertical camera look on the remote head.
+  // Clamp it so the head never bends into an unnatural full rotation.
+  const headPivot = remote.userData.headPivot;
+  if (headPivot) {
+    headPivot.rotation.x = THREE.MathUtils.clamp(
+      current.pitch,
+      -.72,
+      .58
+    );
+  }
 
   /*
    * Weapon movement.
