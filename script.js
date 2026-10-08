@@ -1635,6 +1635,18 @@ window.addEventListener('lntl:player-respawn', (event) => {
   }
 });
 window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
+window.addEventListener('lntl:multiplayer-spawn', (event) => {
+  const state = event.detail?.state;
+  if (!state || ![state.x, state.y, state.z, state.yaw].every(Number.isFinite)) return;
+  player.position.set(state.x, state.y, state.z);
+  yaw = state.yaw;
+  pitch = Number.isFinite(state.pitch) ? state.pitch : -.025;
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+  verticalVelocity = 0;
+  grounded = true;
+});
+
 window.addEventListener('lntl:multiplayer', (event) => {
   const detail = event.detail || {};
   if (detail.connected && detail.playerId && detail.room?.players) {
