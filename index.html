@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#151a17">
-  <title>OUTPOST 07 — Tactical field</title>
+  <title>Đối Kháng 3 người.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -23,8 +23,8 @@
     <div class="team-score team-4"><span class="team-score-label">PHE 4</span><strong id="team-score-4">0</strong></div>
   </section>
     <header class="topbar">
-    <div class="brand"><div class="brand-mark">07</div><div><div class="brand-title">OUTPOST / FIELD OPS</div><div class="brand-sub">TACTICAL SIMULATION</div></div></div>
-    <div class="top-meta"><span class="live">TRAINING LIVE</span><span>BUILD 0.1.07</span><span id="clock">00:00</span></div>
+    <div class="brand"><div class="brand-mark">11</div><div><div class="brand-title">Vùng đất chiến lược</div><div class="brand-sub">Chỉ 1 phe được giành quyền kiểm soát</div></div></div>
+    <div class="top-meta"><span class="live">SERVER LIVE</span><span>BUILD 1.0.0</span><span id="clock">00:00</span></div>
   </header>
   <div class="crosshair red-dot" id="crosshair" aria-hidden="true"><i></i><b></b></div>
   <div class="scope-overlay" id="scope-overlay" aria-hidden="true"><div class="scope-lens"><i class="scope-line scope-line-x"></i><i class="scope-line scope-line-y"></i><i class="scope-center"></i><span class="scope-mark scope-mark-top"></span><span class="scope-mark scope-mark-bottom"></span><span class="scope-mark scope-mark-left"></span><span class="scope-mark scope-mark-right"></span></div></div>
@@ -32,7 +32,7 @@
   <div class="damage-direction" id="damage-direction" aria-hidden="true"><i></i><span></span></div>
   <section class="death-overlay" id="death-overlay" hidden aria-live="assertive">
     <div class="death-panel">
-      <div class="death-kicker">OUTPOST 07 / COMBAT STATUS</div>
+      <div class="death-kicker">Giấy báo tử...</div>
       <h2>BẠN ĐÃ TỬ TRẬN</h2>
       <div class="death-divider"></div>
       <p class="death-killer">BỊ HẠ BỞI <strong id="death-killer-name">ĐỐI PHƯƠNG</strong></p>
@@ -62,19 +62,19 @@
   </footer>
   <section class="intro" id="intro">
     <div class="intro-panel">
-      <div class="intro-kicker">OUTPOST 07 &nbsp; / &nbsp; BẢN THỬ NGHIỆM</div>
-      <h1>VÀO KHU VỰC<br>HUẤN LUYỆN</h1>
-      <p>Bạn xuất hiện phía sau căn nhà bên trái. Bật luyện tập với Bot trong Cài đặt để đối thủ xuất hiện phía sau căn nhà bên phải.</p>
+      <div class="intro-kicker">Đối Kháng &nbsp; / &nbsp; Lựa chọn hình thức</div>
+      <h1>VÀO KHU VỰC<br>CHIẾN THUẬT</h1>
+      <p>Bạn xuất hiện phía sau 1 căn nhà.Để làm quen với cách bắn,bật luyện tập với Bot trong Cài đặt để  spawn bot xuất hiện phía sau căn nhà đối diện.</p>
       <p class="mobile-note">Thiết bị cảm ứng: kéo trên màn hình để xoay góc nhìn.</p>
       <div class="multiplayer-entry">
         <div class="settings-heading"><div><span>CHẾ ĐỘ CHƠI</span><strong>Multiplayer</strong></div><span class="mode-badge">BETA</span></div>
         <label class="setting-row" for="multiplayer-mode">
-          <span><strong>Chơi cùng người khác</strong><small>Tạo phòng hoặc tham gia bằng mã phòng.</small></span>
+          <span><strong>Chơi cùng bạn bè</strong><small>Tạo phòng hoặc tham gia bằng mã phòng.</small></span>
           <span class="switch"><input id="multiplayer-mode" type="checkbox"><i></i></span>
         </label>
         <div id="multiplayer-controls" hidden>
           <label class="mp-label" for="mp-nickname">NICKNAME</label>
-          <input class="mp-input" id="mp-nickname" maxlength="20" placeholder="Sigma78" autocomplete="nickname">
+          <input class="mp-input" id="mp-nickname" maxlength="20" placeholder="Hãy nhập mật danh của bạn." autocomplete="nickname">
           <div class="mp-actions"><button class="settings-done" id="mp-create" type="button">TẠO PHÒNG</button><button class="settings-done" id="mp-join-toggle" type="button">NHẬP MÃ PHÒNG</button></div>
           <div id="mp-join-row" hidden><label class="mp-label" for="mp-room-code">MÃ PHÒNG</label><input class="mp-input" id="mp-room-code" maxlength="6" placeholder="AB12CD" autocapitalize="characters"><button class="settings-done" id="mp-join" type="button">THAM GIA</button></div>
           <p id="mp-status" role="status">Chưa kết nối.</p>
@@ -92,12 +92,12 @@
           <button class="settings-done" id="mp-disconnect" type="button" hidden>NGẮT KẾT NỐI</button>
         </div>
       </div>
-      <button class="enter" id="enter">BẮT ĐẦU TUẦN TRA &nbsp; ↗</button>
+      <button class="enter" id="enter">BẮT ĐẦU TIẾN ĐÁNH &nbsp; ↗</button>
       <button class="settings-open" id="settings-open" type="button" aria-expanded="false" aria-controls="training-settings">CÀI ĐẶT TRẬN ĐẤU <span>⚙</span></button>
       <section class="training-settings" id="training-settings" hidden>
         <div class="settings-heading"><div><span>CHẾ ĐỘ CHƠI</span><strong>Luyện tập với Bot</strong></div><span class="mode-badge" id="bot-mode-label">KHÔNG</span></div>
         <label class="setting-row" for="bot-training">
-          <span><strong>Bot đối thủ</strong><small>Bot xuất hiện phía sau căn nhà bên phải, có thể di chuyển và bắn.</small></span>
+          <span><strong>Bot đối thủ</strong><small>Bot xuất hiện phía sau căn nhà đối diện, có thể di chuyển và bắn.</small></span>
           <span class="switch"><input id="bot-training" type="checkbox"><i></i></span>
         </label>
         <button class="settings-done" id="settings-done" type="button">XONG</button>
@@ -108,7 +108,7 @@
   <section class="armory hidden" id="armory" aria-hidden="true" aria-labelledby="armory-title">
     <div class="armory-panel">
       <header class="armory-header">
-        <div><div class="armory-kicker">OUTPOST / QUARTERMASTER · LOADOUT 3 Ô VŨ KHÍ</div><h2 id="armory-title">KHO VŨ KHÍ</h2><p>Mang 1 súng chính, 1 súng lục và 1 vũ khí cận chiến. Trang bị mới sẽ thay thế vũ khí cùng ô.</p></div>
+        <div><div class="armory-kicker">CỬA HÀNG VŨ KHÍ · LOADOUT 3 Ô VŨ KHÍ</div><h2 id="armory-title">KHO VŨ KHÍ</h2><p>Mang 1 súng chính, 1 súng lục và 1 vũ khí cận chiến. Trang bị mới sẽ thay thế vũ khí cùng ô.</p></div>
         <div class="armory-balance"><span>SỐ DƯ</span><strong><span id="armory-balance-value">99.999</span> <small>$</small></strong></div>
         <button class="armory-close" id="armory-close" type="button" aria-label="Đóng kho súng">×</button>
       </header>

@@ -224,7 +224,8 @@ window.addEventListener('lntl:player-hit', (event) => {
 
   const {
     victimId,
-    damage
+    bodyPart,
+    distance
   } = event.detail || {};
 
   console.log(
@@ -232,7 +233,8 @@ window.addEventListener('lntl:player-hit', (event) => {
     {
       attacker: myPlayerId,
       victim: victimId,
-      damage
+      bodyPart,
+      distance
     }
   );
 
@@ -246,7 +248,9 @@ window.addEventListener('lntl:player-hit', (event) => {
   socket.send(
     JSON.stringify({
       type: "player:hit",
-      victimId
+      victimId,
+      bodyPart: typeof bodyPart === "string" ? bodyPart : "THÂN",
+      distance: Number.isFinite(Number(distance)) ? Number(distance) : 0
     })
   );
 });

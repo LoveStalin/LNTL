@@ -281,31 +281,67 @@ for (const [x, z] of [[-10.7, 5.4], [10.7, -5.4]]) {
   for (let stripe = -1.5; stripe <= 1.5; stripe += .75) cube(scene, mats.accent, x, .52, z + stripe, .53, .13, .32);
 }
 
-const safeZoneBounds = { minX: -28.7, maxX: -18.7, minZ: -1.5, maxZ: 1.5, maxHeight: 1.8 };
-const safeZoneBaseY = .17;
-const safeZoneMaterial = new THREE.MeshBasicMaterial({ color: '#37ff91', transparent: true, opacity: .11, depthWrite: false, side: THREE.DoubleSide });
-const safeZone = new THREE.Mesh(
-  new THREE.BoxGeometry(
-    safeZoneBounds.maxX - safeZoneBounds.minX,
-    .08,
-    safeZoneBounds.maxZ - safeZoneBounds.minZ
-  ),
-  safeZoneMaterial
-);
-safeZone.position.set(
-  (safeZoneBounds.minX + safeZoneBounds.maxX) / 2,
-  safeZoneBaseY,
-  (safeZoneBounds.minZ + safeZoneBounds.maxZ) / 2
-);
-safeZone.renderOrder = 1;
-scene.add(safeZone);
-const safeZoneOutline = new THREE.LineSegments(
-  new THREE.EdgesGeometry(safeZone.geometry),
-  new THREE.LineBasicMaterial({ color: '#56ff9e', transparent: true, opacity: .62, depthWrite: false })
-);
-safeZoneOutline.position.copy(safeZone.position);
-safeZoneOutline.renderOrder = 2;
-scene.add(safeZoneOutline);
+// Shop/safe zones: one broad green area behind every house.
+// The old zone was only 10 x 3 units; these now wrap the whole rear side of each house.
+const shopZoneDepth = 6.8;
+const shopZoneWidth = 7.8;
+const shopZoneBaseY = .17;
+const shopZoneHeight = .08;
+const shopZoneMaterial = new THREE.MeshBasicMaterial({
+  color: '#37ff91',
+  transparent: true,
+  opacity: .11,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+const shopZoneOutlineMaterial = new THREE.LineBasicMaterial({
+  color: '#56ff9e',
+  transparent: true,
+  opacity: .62,
+  depthWrite: false
+});
+const shopZones = [];
+
+for (const house of houseFloors) {
+  const backLocalX = -house.frontX;
+  const centerLocalX = backLocalX - house.facing * (shopZoneDepth / 2);
+
+  const zone = new THREE.Mesh(
+    new THREE.BoxGeometry(shopZoneDepth, shopZoneHeight, shopZoneWidth),
+    shopZoneMaterial
+  );
+  zone.position.set(
+    house.x +
+      Math.cos(house.rotationY) * centerLocalX +
+      Math.sin(house.rotationY) * 0,
+    shopZoneBaseY,
+    house.z -
+      Math.sin(house.rotationY) * centerLocalX +
+      Math.cos(house.rotationY) * 0
+  );
+  zone.rotation.y = house.rotationY;
+  zone.renderOrder = 1;
+  scene.add(zone);
+
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(zone.geometry),
+    shopZoneOutlineMaterial
+  );
+  outline.position.copy(zone.position);
+  outline.rotation.y = house.rotationY;
+  outline.renderOrder = 2;
+  scene.add(outline);
+
+  shopZones.push({
+    house,
+    zone,
+    outline,
+    centerLocalX,
+    minLocalX: Math.min(backLocalX, backLocalX - house.facing * shopZoneDepth),
+    maxLocalX: Math.max(backLocalX, backLocalX - house.facing * shopZoneDepth),
+    halfWidth: shopZoneWidth / 2
+  });
+}
 
 const playerRadius = .34;
 const playerHeight = 1.62;
@@ -320,9 +356,22 @@ function canOccupy(x, z, feetY) {
 }
 
 function isInSafeZone(position = player.position) {
-  return position.y <= safeZoneBounds.maxHeight &&
-    position.x >= safeZoneBounds.minX && position.x <= safeZoneBounds.maxX &&
-    position.z >= safeZoneBounds.minZ && position.z <= safeZoneBounds.maxZ;
+  if (position.y > 1.8) return false;
+
+  return shopZones.some((zone) => {
+    const dx = position.x - zone.house.x;
+    const dz = position.z - zone.house.z;
+    const localX =
+      Math.cos(zone.house.rotationY) * dx -
+      Math.sin(zone.house.rotationY) * dz;
+    const localZ =
+      Math.sin(zone.house.rotationY) * dx +
+      Math.cos(zone.house.rotationY) * dz;
+
+    return localX >= zone.minLocalX &&
+      localX <= zone.maxLocalX &&
+      Math.abs(localZ) <= zone.halfWidth;
+  });
 }
 
 function getSurfaceAt(x, z, feetY) {
@@ -750,7 +799,7 @@ const ownedWeapons = new Set([
   ...weapons.filter((weapon) => weapon.owned).map((weapon) => weapon.name),
   ...savedWeapons.filter((name) => weapons.some((weapon) => weapon.name === name))
 ]);
-let savedBalance = 99_999;
+let savedBalance = 4_700;
 try {
   const rawBalance = localStorage.getItem('outpost-balance');
   if (rawBalance !== null) {
@@ -758,7 +807,7 @@ try {
     if (Number.isFinite(storedBalance) && storedBalance >= 0) savedBalance = storedBalance;
   }
 } catch {
-  savedBalance = 99_999;
+  savedBalance = 4_700;
 }
 let playerBalance = savedBalance;
 let savedLoadout = {};
@@ -1512,27 +1561,19 @@ function buildRemoteWeapon(remote, state) {
 }
 function hitRemotePlayer(start, end) {
   let nearest = null;
-  const segment = end.clone().sub(start);
-  const lengthSq = segment.lengthSq();
-  if (lengthSq === 0) return null;
-  const segmentLength = Math.sqrt(lengthSq);
   for (const [id, group] of remotePlayers) {
-    if (!group.visible) continue;
-    const center = group.position;
-    // Wider torso/head/legs capsules make hits reliable against the low-poly model.
-    const parts = [
-      { point: new THREE.Vector3(center.x, center.y + 1.62, center.z), radius: .34 },
-      { point: new THREE.Vector3(center.x, center.y + 1.15, center.z), radius: .52 },
-      { point: new THREE.Vector3(center.x, center.y + .48, center.z), radius: .38 },
-    ];
-    for (const part of parts) {
-      const projection = part.point.clone().sub(start).dot(segment) / lengthSq;
-      if (projection < 0 || projection > 1) continue;
-      const closest = start.clone().addScaledVector(segment, projection);
-      if (closest.distanceTo(part.point) <= part.radius) {
-        const distance = projection * segmentLength;
-        if (!nearest || distance < nearest.distance) nearest = { id, distance };
-      }
+    if (!group.visible || group.userData.dead) continue;
+    const hit = getBodyPartHit(start, end, group, group.rotation.y);
+    if (!hit) continue;
+    const segment = end.clone().sub(start);
+    const distance = hit.fraction * segment.length();
+    if (!nearest || distance < nearest.distance) {
+      nearest = {
+        id,
+        distance,
+        bodyPart: hit.name,
+        multiplier: hit.multiplier
+      };
     }
   }
   return nearest;
@@ -1661,10 +1702,56 @@ function hideDeathScreen() {
 }
 
 window.addEventListener('lntl:player-damage', (event) => {
-  const { victimId, health, alive, attackerNickname } = event.detail || {};
+  const {
+    victimId,
+    health,
+    alive,
+    attackerNickname,
+    attackerId,
+    bodyPart,
+    damage,
+    attackerPosition
+  } = event.detail || {};
+
+  // Reward the local multiplayer player once when their hit eliminates an opponent.
+  if (
+    alive === false &&
+    attackerId &&
+    attackerId === window.lntlMultiplayer?.getPlayerId()
+  ) {
+    playerBalance += 200;
+    saveBalance();
+    const previousStatus = armoryStatus.textContent;
+    armoryStatus.textContent = '+$200 · HẠ GỤC ĐỐI THỦ';
+    setTimeout(() => {
+      if (armoryStatus.textContent === '+$200 · HẠ GỤC ĐỐI THỦ') {
+        armoryStatus.textContent = previousStatus;
+      }
+    }, 1800);
+  }
+
   if (victimId === window.lntlMultiplayer?.getPlayerId()) {
     playerHealth = Math.max(0, Number(health) || 0);
+
+    let incomingDirection = null;
+    if (attackerPosition && [attackerPosition.x, attackerPosition.y, attackerPosition.z].every(Number.isFinite)) {
+      incomingDirection = new THREE.Vector3(
+        attackerPosition.x - player.position.x,
+        attackerPosition.y - player.position.y,
+        attackerPosition.z - player.position.z
+      );
+    } else if (attackerId) {
+      const attacker = remotePlayers.get(attackerId);
+      if (attacker) incomingDirection = attacker.position.clone().sub(player.position);
+    }
+
+    showDamageFeedback(
+      incomingDirection,
+      bodyPart || 'THÂN',
+      Math.max(1, Number(damage) || 0)
+    );
     updateCombatUI();
+
     if (alive === false) {
       playerInvulnerableTimer = 3;
       showDeathScreen(attackerNickname);
@@ -2175,6 +2262,8 @@ function shoot() {
         {
           detail: {
             victimId: hit.id,
+            bodyPart: hit.bodyPart,
+            distance: hit.distance,
             damage
           }
         }
@@ -2234,6 +2323,8 @@ function meleeAttack() {
         new CustomEvent('lntl:player-hit', {
           detail: {
             victimId: hit.id,
+            bodyPart: hit.bodyPart,
+            distance: hit.distance,
             damage: weapon.damage
           }
         })
@@ -2916,9 +3007,13 @@ for (const [id, remote] of remotePlayers) {
 );
   }
   const safeZoneWave = Math.sin(performance.now() * .0017);
-  safeZone.position.y = safeZoneBaseY + safeZoneWave * .055;
-  safeZoneOutline.position.y = safeZone.position.y;
-  safeZoneMaterial.opacity = .095 + (safeZoneWave + 1) * .012;
+  for (const shopZone of shopZones) {
+    const baseY = shopZoneBaseY;
+    const waveOffset = safeZoneWave * .055;
+    shopZone.zone.position.y = baseY + waveOffset;
+    shopZone.outline.position.y = shopZone.zone.position.y;
+  }
+  shopZoneMaterial.opacity = .095 + (safeZoneWave + 1) * .012;
   const weaponSettle = Math.exp(-delta * 5);
   weaponModel.position.x *= weaponSettle;
   weaponModel.position.y *= weaponSettle;
