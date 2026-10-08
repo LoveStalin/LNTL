@@ -170,13 +170,73 @@ window.addEventListener("lntl:ready-toggle", () => {
   const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
   socket.send(JSON.stringify({ type: "ready", ready: !me?.ready }));
 });
-window.addEventListener("lntl:player-hit", (event) => {
-  if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
-  const { victimId, damage } = event.detail || {};
-  if (victimId) socket.send(JSON.stringify({ type: "player:hit", victimId, damage }));
+window.addEventListener('lntl:player-hit', (event) => {
+  if (
+    !connected ||
+    !socket ||
+    socket.readyState !== WebSocket.OPEN
+  ) {
+    console.warn(
+      '[LNTL PvP] Socket not ready'
+    );
+    return;
+  }
+
+  const {
+    victimId,
+    damage
+  } = event.detail || {};
+
+  console.log(
+    '[LNTL PvP] HIT',
+    {
+      attacker: myPlayerId,
+      victim: victimId,
+      damage
+    }
+  );
+
+  if (!victimId) {
+    console.warn(
+      '[LNTL PvP] Missing victimId'
+    );
+    return;
+  }
+
+  socket.send(
+    JSON.stringify({
+      type: "player:hit",
+      victimId,
+      damage
+    })
+  );
 });
 window.addEventListener("lntl:send-state", (event) => {
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify({ type: "player:state", state: event.detail }));
+  const state = event.detail || {};
+
+  socket.send(JSON.stringify({
+    type: "player:state",
+    state: {
+      x: Number(state.x) || 0,
+      y: Number(state.y) || 0,
+      z: Number(state.z) || 0,
+
+      yaw: Number(state.yaw) || 0,
+      pitch: Number(state.pitch) || 0,
+
+      // Multiplayer-specific-state
+      weaponSlot: state.weaponSlot || "primary",
+      weaponName: state.weaponName || "",
+      weaponCategory: state.weaponCategory || "",
+      meleeType: state.meleeType || "",
+      firing: Boolean(state.firing),
+      aiming: Boolean(state.aiming),
+      moving: Boolean(state.moving),
+      crouched: Boolean(state.crouched),
+
+      clientAt: performance.now(),
+      }
+  }));
 });
 window.lntlMultiplayer = { isConnected: () => connected, getPlayerId: () => myPlayerId };
