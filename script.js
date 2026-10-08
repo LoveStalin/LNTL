@@ -281,31 +281,65 @@ for (const [x, z] of [[-10.7, 5.4], [10.7, -5.4]]) {
   for (let stripe = -1.5; stripe <= 1.5; stripe += .75) cube(scene, mats.accent, x, .52, z + stripe, .53, .13, .32);
 }
 
-const safeZoneBounds = { minX: -28.7, maxX: -18.7, minZ: -1.5, maxZ: 1.5, maxHeight: 1.8 };
-const safeZoneBaseY = .17;
-const safeZoneMaterial = new THREE.MeshBasicMaterial({ color: '#37ff91', transparent: true, opacity: .11, depthWrite: false, side: THREE.DoubleSide });
-const safeZone = new THREE.Mesh(
-  new THREE.BoxGeometry(
-    safeZoneBounds.maxX - safeZoneBounds.minX,
-    .08,
-    safeZoneBounds.maxZ - safeZoneBounds.minZ
-  ),
-  safeZoneMaterial
-);
-safeZone.position.set(
-  (safeZoneBounds.minX + safeZoneBounds.maxX) / 2,
-  safeZoneBaseY,
-  (safeZoneBounds.minZ + safeZoneBounds.maxZ) / 2
-);
-safeZone.renderOrder = 1;
-scene.add(safeZone);
-const safeZoneOutline = new THREE.LineSegments(
-  new THREE.EdgesGeometry(safeZone.geometry),
-  new THREE.LineBasicMaterial({ color: '#56ff9e', transparent: true, opacity: .62, depthWrite: false })
-);
-safeZoneOutline.position.copy(safeZone.position);
-safeZoneOutline.renderOrder = 2;
-scene.add(safeZoneOutline);
+// Shop/safe zones: one broad green area behind every house.
+// The old zone was only 10 x 3 units; these now wrap the whole rear side of each house.
+const shopZoneDepth = 6.8;
+const shopZoneWidth = 7.8;
+const shopZoneBaseY = .17;
+const shopZoneHeight = .08;
+const shopZoneMaterial = new THREE.MeshBasicMaterial({
+  color: '#37ff91',
+  transparent: true,
+  opacity: .11,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+const shopZoneOutlineMaterial = new THREE.LineBasicMaterial({
+  color: '#56ff9e',
+  transparent: true,
+  opacity: .62,
+  depthWrite: false
+});
+const shopZones = [];
+
+for (const house of houseFloors) {
+  const backLocalX = -house.frontX;
+  const centerLocalX = backLocalX - house.facing * (shopZoneDepth / 2);
+
+  const zone = new THREE.Mesh(
+    new THREE.BoxGeometry(shopZoneDepth, shopZoneHeight, shopZoneWidth),
+    shopZoneMaterial
+  );
+  zone.position.set(
+    house.x +
+      Math.cos(house.rotationY) * centerLocalX +
+      Math.sin(house.rotationY) * 0,
+    shopZoneBaseY,
+    house.z -
+      Math.sin(house.rotationY) * centerLocalX +
+      Math.cos(house.rotationY) * 0
+  );
+  zone.rotation.y = house.rotationY;
+  zone.renderOrder = 1;
+  scene.add(zone);
+
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(zone.geometry),
+    shopZoneOutlineMaterial
+  );
+  outline.position.copy(zone.position);
+  outline.rotation.y = house.rotationY;
+  outline.renderOrder = 2;
+  scene.add(outline);
+
+  shopZones.push({
+    house,
+    centerLocalX,
+    minLocalX: Math.min(backLocalX, backLocalX - house.facing * shopZoneDepth),
+    maxLocalX: Math.max(backLocalX, backLocalX - house.facing * shopZoneDepth),
+    halfWidth: shopZoneWidth / 2
+  });
+}
 
 const playerRadius = .34;
 const playerHeight = 1.62;
@@ -320,9 +354,22 @@ function canOccupy(x, z, feetY) {
 }
 
 function isInSafeZone(position = player.position) {
-  return position.y <= safeZoneBounds.maxHeight &&
-    position.x >= safeZoneBounds.minX && position.x <= safeZoneBounds.maxX &&
-    position.z >= safeZoneBounds.minZ && position.z <= safeZoneBounds.maxZ;
+  if (position.y > 1.8) return false;
+
+  return shopZones.some((zone) => {
+    const dx = position.x - zone.house.x;
+    const dz = position.z - zone.house.z;
+    const localX =
+      Math.cos(zone.house.rotationY) * dx -
+      Math.sin(zone.house.rotationY) * dz;
+    const localZ =
+      Math.sin(zone.house.rotationY) * dx +
+      Math.cos(zone.house.rotationY) * dz;
+
+    return localX >= zone.minLocalX &&
+      localX <= zone.maxLocalX &&
+      Math.abs(localZ) <= zone.halfWidth;
+  });
 }
 
 function getSurfaceAt(x, z, feetY) {
