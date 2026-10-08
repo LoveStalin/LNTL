@@ -1086,10 +1086,10 @@ function createRemotePlayer(id, nickname, team) {
 
   // Small neck keeps the head visibly connected while it pitches.
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(.10, .11, .12, 8),
+    new THREE.CylinderGeometry(.095, .11, .22, 8),
     remoteHead
   );
-  neck.position.set(0, 0.02, 0);
+  neck.position.set(0, 0.08, 0);
   headPivot.add(neck);
 
   group.add(headPivot);
@@ -2754,6 +2754,13 @@ for (const [id, remote] of remotePlayers) {
    */
   current.pitch +=
     (target.pitch - current.pitch) *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  current.lean +=
+    (target.lean - current.lean) *
     Math.min(
       1,
       delta * interpolationSpeed
