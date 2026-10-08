@@ -2759,12 +2759,10 @@ for (const [id, remote] of remotePlayers) {
       delta * interpolationSpeed
     );
 
-  current.lean +=
-    (target.lean - current.lean) *
-    Math.min(
-      1,
-      delta * interpolationSpeed
-    );
+  // Lean is an input-sensitive camera angle. Keep the remote head at the
+  // exact angle reported by the local camera instead of smoothing/clamping it.
+  // This keeps A's Q/E lean visually identical on B.
+  current.lean = Number.isFinite(target.lean) ? target.lean : 0;
 
   remote.position.set(
     current.x,
@@ -2784,11 +2782,9 @@ for (const [id, remote] of remotePlayers) {
       -.72,
       .58
     );
-    headPivot.rotation.z = THREE.MathUtils.clamp(
-      current.lean || 0,
-      -.58,
-      .58
-    );
+    headPivot.rotation.z = Number.isFinite(current.lean)
+      ? current.lean
+      : 0;
   }
 
   /*
