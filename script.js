@@ -1620,9 +1620,16 @@ window.addEventListener('lntl:player-respawn', (event) => {
     playerHealth = 100;
     if (respawned.state && [respawned.state.x, respawned.state.y, respawned.state.z, respawned.state.yaw].every(Number.isFinite)) {
       player.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
-      yaw = respawned.state.yaw;
-      pitch = respawned.state.pitch || 0;
-      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+      yaw = Number(respawned.state.yaw);
+      pitch = Number.isFinite(respawned.state.pitch) ? respawned.state.pitch : -.025;
+
+      // Yaw belongs to the player body. The camera is a child of the player,
+      // so applying yaw to the camera as well would rotate it twice after respawn.
+      player.rotation.y = yaw;
+      camera.rotation.order = 'YXZ';
+      camera.rotation.x = pitch;
+      camera.rotation.y = 0;
+      camera.rotation.z = 0;
     }
     playerInvulnerableTimer = 1.5;
     updateCombatUI();
