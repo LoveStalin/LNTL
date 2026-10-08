@@ -355,6 +355,7 @@ export class RoomDurableObject {
       this.broadcast(room, {
         type: "player:damage",
         attackerId: attacker.id,
+        attackerNickname: attacker.nickname,
         victimId: victim.id,
         attackerTeam: attacker.team,
         victimTeam: victim.team,
