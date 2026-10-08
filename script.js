@@ -799,7 +799,7 @@ const ownedWeapons = new Set([
   ...weapons.filter((weapon) => weapon.owned).map((weapon) => weapon.name),
   ...savedWeapons.filter((name) => weapons.some((weapon) => weapon.name === name))
 ]);
-let savedBalance = 99_999;
+let savedBalance = 4_700;
 try {
   const rawBalance = localStorage.getItem('outpost-balance');
   if (rawBalance !== null) {
@@ -807,7 +807,7 @@ try {
     if (Number.isFinite(storedBalance) && storedBalance >= 0) savedBalance = storedBalance;
   }
 } catch {
-  savedBalance = 99_999;
+  savedBalance = 4_700;
 }
 let playerBalance = savedBalance;
 let savedLoadout = {};
@@ -1712,6 +1712,23 @@ window.addEventListener('lntl:player-damage', (event) => {
     damage,
     attackerPosition
   } = event.detail || {};
+
+  // Reward the local multiplayer player once when their hit eliminates an opponent.
+  if (
+    alive === false &&
+    attackerId &&
+    attackerId === window.lntlMultiplayer?.getPlayerId()
+  ) {
+    playerBalance += 200;
+    saveBalance();
+    const previousStatus = armoryStatus.textContent;
+    armoryStatus.textContent = '+$200 · HẠ GỤC ĐỐI THỦ';
+    setTimeout(() => {
+      if (armoryStatus.textContent === '+$200 · HẠ GỤC ĐỐI THỦ') {
+        armoryStatus.textContent = previousStatus;
+      }
+    }, 1800);
+  }
 
   if (victimId === window.lntlMultiplayer?.getPlayerId()) {
     playerHealth = Math.max(0, Number(health) || 0);
