@@ -70,6 +70,16 @@
           <div id="mp-join-row" hidden><label class="mp-label" for="mp-room-code">MÃ PHÒNG</label><input class="mp-input" id="mp-room-code" maxlength="6" placeholder="AB12CD" autocapitalize="characters"><button class="settings-done" id="mp-join" type="button">THAM GIA</button></div>
           <p id="mp-status" role="status">Chưa kết nối.</p>
           <p id="mp-room-info" hidden></p>
+          <section class="mp-teams" id="mp-teams" hidden aria-label="Chọn phe">
+            <div class="mp-teams-title"><span>PHÂN CHIA PHE</span><small>Tối đa 3 người / phe</small></div>
+            <div class="mp-team-grid">
+              <button class="mp-team-card team-1" data-team="1" type="button"><strong>PHE 1</strong><span id="mp-team-1">0/3</span><small id="mp-team-1-names">Trống</small></button>
+              <button class="mp-team-card team-2" data-team="2" type="button"><strong>PHE 2</strong><span id="mp-team-2">0/3</span><small id="mp-team-2-names">Trống</small></button>
+              <button class="mp-team-card team-3" data-team="3" type="button"><strong>PHE 3</strong><span id="mp-team-3">0/3</span><small id="mp-team-3-names">Trống</small></button>
+              <button class="mp-team-card team-4" data-team="4" type="button"><strong>PHE 4</strong><span id="mp-team-4">0/3</span><small id="mp-team-4-names">Trống</small></button>
+            </div>
+            <p id="mp-team-status">Chọn một phe để tham gia.</p>
+          </section>
           <button class="settings-done" id="mp-disconnect" type="button" hidden>NGẮT KẾT NỐI</button>
         </div>
       </div>
