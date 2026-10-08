@@ -1005,6 +1005,7 @@ function createRemoteNetworkState(state = {}) {
 
     yaw: Number(state.yaw) || 0,
     pitch: Number(state.pitch) || 0,
+    lean: Number(state.lean) || 0,
 
     weaponSlot: state.weaponSlot || "primary",
     weaponName: state.weaponName || "",
@@ -1051,18 +1052,48 @@ function createRemotePlayer(id, nickname, team) {
     remoteHead
   );
 
-  head.position.y = 1.58;
-  group.add(head);
+  // Head pivot lets remote players visibly look up/down with their camera.
+  // The body keeps the network yaw; the head pivot follows the network pitch.
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 1.40, 0);
+
+  head.position.set(0, .18, 0);
+  headPivot.add(head);
 
   const helmet = new THREE.Mesh(
     new THREE.SphereGeometry(.23, 12, 8),
     mats.helmet
   );
 
-  helmet.position.set(0, 1.72, 0);
+  helmet.position.set(0, .32, 0);
   helmet.scale.y = .65;
 
-  group.add(helmet);
+  headPivot.add(helmet);
+
+  // The head is otherwise a sphere, so pitch would be visually invisible.
+  // Add a small directional face/visor detail that makes looking up/down obvious.
+  const face = new THREE.Mesh(
+    new THREE.BoxGeometry(.22, .10, .035),
+    new THREE.MeshStandardMaterial({
+      color: '#252b28',
+      roughness: .72,
+      metalness: .08
+    })
+  );
+  face.position.set(0, .19, -.195);
+  face.rotation.x = 0;
+  headPivot.add(face);
+
+  // Small neck keeps the head visibly connected while it pitches.
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(.095, .11, .28, 8),
+    remoteHead
+  );
+  neck.position.set(0, 0.10, 0);
+  headPivot.add(neck);
+
+  group.add(headPivot);
+  group.userData.headPivot = headPivot;
 
   // =========================
   // ARMS
@@ -2728,6 +2759,11 @@ for (const [id, remote] of remotePlayers) {
       delta * interpolationSpeed
     );
 
+  // Lean is an input-sensitive camera angle. Keep the remote head at the
+  // exact angle reported by the local camera instead of smoothing/clamping it.
+  // This keeps A's Q/E lean visually identical on B.
+  current.lean = Number.isFinite(target.lean) ? target.lean : 0;
+
   remote.position.set(
     current.x,
     current.y,
@@ -2736,6 +2772,20 @@ for (const [id, remote] of remotePlayers) {
 
   remote.rotation.y =
     current.yaw;
+
+  // Mirror the local player's vertical camera look on the remote head.
+  // Clamp it so the head never bends into an unnatural full rotation.
+  const headPivot = remote.userData.headPivot;
+  if (headPivot) {
+    headPivot.rotation.x = THREE.MathUtils.clamp(
+      current.pitch,
+      -.72,
+      .58
+    );
+    headPivot.rotation.z = Number.isFinite(current.lean)
+      ? current.lean
+      : 0;
+  }
 
   /*
    * Weapon movement.
@@ -2820,6 +2870,7 @@ for (const [id, remote] of remotePlayers) {
 
       yaw,
       pitch,
+      lean: camera.rotation.z,
 
       // =========================
       // WEAPON STATE
@@ -2875,9 +2926,9 @@ for (const [id, remote] of remotePlayers) {
   player.rotation.y = yaw;
   camera.rotation.x = pitch;
   const leanInput = Number(keys.has('KeyE')) - Number(keys.has('KeyQ'));
-  const leanAmount = aiming ? .28 : .42;
+  const leanAmount = aiming ? .34 : .52;
   camera.position.x += (leanInput * leanAmount - camera.position.x) * Math.min(1, delta * 9);
-  camera.rotation.z += (leanInput * -.14 - camera.rotation.z) * Math.min(1, delta * 9);
+  camera.rotation.z += (leanInput * -.28 - camera.rotation.z) * Math.min(1, delta * 9);
   const targetFov = meleeMode ? 72 : (aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72);
   const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 9, delta);
   if (Math.abs(nextFov - camera.fov) > .01) {
