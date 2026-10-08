@@ -9,10 +9,35 @@ const roomInfo = $("#mp-room-info");
 const joinRow = $("#mp-join-row");
 const disconnectButton = $("#mp-disconnect");
 const scoreboard = $("#team-scoreboard");
+const teamsPanel = $("#mp-teams");
+const teamStatus = $("#mp-team-status");
 function updateScoreboard(teamKills = {}) {
   for (let team = 1; team <= 4; team++) {
     const score = $("#" + "team-score-" + team);
     if (score) score.textContent = String(Number(teamKills[team]) || 0);
+  }
+}
+function renderTeamPanel(players = []) {
+  if (!teamsPanel) return;
+  teamsPanel.hidden = !connected || players.length === 0;
+  const me = players.find((player) => player.id === myPlayerId);
+  for (let team = 1; team <= 4; team++) {
+    const members = players.filter((player) => Number(player.team) === team);
+    const card = teamsPanel.querySelector('[data-team="' + team + '"]');
+    const count = $("#" + "mp-team-" + team);
+    const names = $("#" + "mp-team-" + team + "-names");
+    if (count) count.textContent = members.length + "/3";
+    if (names) names.textContent = members.length ? members.map((p) => p.nickname).join(" · ") : "Trống";
+    if (card) {
+      card.classList.toggle("selected", Number(me?.team) === team);
+      card.classList.toggle("full", members.length >= 3 && Number(me?.team) !== team);
+      card.disabled = members.length >= 3 && Number(me?.team) !== team;
+    }
+  }
+  if (teamStatus) {
+    teamStatus.textContent = me?.team
+      ? "Bạn đang ở PHE " + me.team + ". Có thể đổi phe trước khi sẵn sàng."
+      : "Chọn một phe để tham gia.";
   }
 }
 function showScoreboard(show) {
@@ -98,6 +123,7 @@ function connect(code, nickname) {
         myPlayerId = message.playerId; activeRoom = message.room;
         showScoreboard(true);
         updateScoreboard(activeRoom.teamKills || {});
+        renderTeamPanel(activeRoom.players || []);
         roomInfo.hidden = false; disconnectButton.hidden = false;
         setStatus("Đã kết nối phòng " + code + ". Nhấn BẮT ĐẦU TUẦN TRA để vào trận.");
         updateRoomInfo();
@@ -113,6 +139,7 @@ function connect(code, nickname) {
         resolve();
       } else if (message.type === "room:update") {
         activeRoom = message.room; updateRoomInfo();
+        renderTeamPanel(activeRoom.players || []);
         for (const player of activeRoom.players || []) {
           if (player.id !== myPlayerId && player.state) {
             window.dispatchEvent(new CustomEvent("lntl:remote-state", {
@@ -162,9 +189,18 @@ function updateRoomInfo() {
 function disconnect() {
   if (socket) { const old = socket; socket = null; old.close(1000, "Leave room"); }
   connected = false; activeRoom = null; myPlayerId = null;
+  if (teamsPanel) teamsPanel.hidden = true;
   window.dispatchEvent(new CustomEvent("lntl:multiplayer", { detail: { connected: false } }));
 }
 $("#mp-disconnect").addEventListener("click", disconnect);
+document.querySelectorAll(".mp-team-card").forEach((button) => {
+  button.addEventListener("click", () => {
+    const team = Number(button.dataset.team);
+    if (!Number.isInteger(team)) return;
+    if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ type: "team:select", team }));
+  });
+});
 window.addEventListener("lntl:ready-toggle", () => {
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
   const me = activeRoom?.players?.find((player) => player.id === myPlayerId);
