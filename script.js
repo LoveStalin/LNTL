@@ -334,6 +334,8 @@ for (const house of houseFloors) {
 
   shopZones.push({
     house,
+    zone,
+    outline,
     centerLocalX,
     minLocalX: Math.min(backLocalX, backLocalX - house.facing * shopZoneDepth),
     maxLocalX: Math.max(backLocalX, backLocalX - house.facing * shopZoneDepth),
@@ -2988,9 +2990,13 @@ for (const [id, remote] of remotePlayers) {
 );
   }
   const safeZoneWave = Math.sin(performance.now() * .0017);
-  safeZone.position.y = safeZoneBaseY + safeZoneWave * .055;
-  safeZoneOutline.position.y = safeZone.position.y;
-  safeZoneMaterial.opacity = .095 + (safeZoneWave + 1) * .012;
+  for (const shopZone of shopZones) {
+    const baseY = shopZoneBaseY;
+    const waveOffset = safeZoneWave * .055;
+    shopZone.zone.position.y = baseY + waveOffset;
+    shopZone.outline.position.y = shopZone.zone.position.y;
+  }
+  shopZoneMaterial.opacity = .095 + (safeZoneWave + 1) * .012;
   const weaponSettle = Math.exp(-delta * 5);
   weaponModel.position.x *= weaponSettle;
   weaponModel.position.y *= weaponSettle;
