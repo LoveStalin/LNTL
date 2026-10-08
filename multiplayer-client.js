@@ -140,10 +140,14 @@ function connect(code, nickname) {
       } else if (message.type === "room:update") {
         activeRoom = message.room; updateRoomInfo();
         renderTeamPanel(activeRoom.players || []);
+        const self = activeRoom.players?.find((player) => player.id === myPlayerId);
+        if (self?.state) {
+          window.dispatchEvent(new CustomEvent("lntl:multiplayer-spawn", { detail: { state: self.state, team: self.team } }));
+        }
         for (const player of activeRoom.players || []) {
           if (player.id !== myPlayerId && player.state) {
             window.dispatchEvent(new CustomEvent("lntl:remote-state", {
-              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, state: player.state }
+              detail: { type: "player:state", playerId: player.id, nickname: player.nickname, team: player.team, state: player.state }
             }));
           }
         }
@@ -242,8 +246,7 @@ window.addEventListener('lntl:player-hit', (event) => {
   socket.send(
     JSON.stringify({
       type: "player:hit",
-      victimId,
-      damage
+      victimId
     })
   );
 });
