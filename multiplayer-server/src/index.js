@@ -291,12 +291,27 @@ export class RoomDurableObject {
     if (message.type === "player:hit" && typeof message.victimId === "string") {
       const attacker = room.players.find((entry) => entry.id === playerId);
       const victim = room.players.find((entry) => entry.id === message.victimId);
-      if (!attacker || !victim || attacker.id === victim.id || attacker.team === victim.team || victim.alive === false) return;
-      const damage = Math.max(1, Math.min(100, Math.round(Number(message.damage) || 0)));
-      victim.health = Math.max(0, (victim.health ?? 100) - damage);
-      if (victim.health === 0) {
+      if (!attacker || !victim) return;
+      if (attacker.id === victim.id) return;
+      if (attacker.team === victim.team) return;
+      if (victim.alive === false) return;
+      
+      const rawDamage = Number(message.damage);
+
+      if(!Number.isFinite(rawDamage)) return;
+      const damage = Math.max(1, 
+        Math.min(100, Math.round(Number(raw.damage) ))
+      );
+      const killed = victim.health <= 0;
+      if (killed) {
+        victim.health = 0
         victim.alive = false;
-        room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
+        room.teamKills ||= {
+           1: 0,
+           2: 0, 
+           3: 0, 
+           4: 0 
+          };
         room.teamKills[attacker.team] = (room.teamKills[attacker.team] || 0) + 1;
       }
       await this.ctx.storage.put("room", room);
@@ -304,12 +319,20 @@ export class RoomDurableObject {
         type: "player:damage",
         attackerId: attacker.id,
         victimId: victim.id,
+        damage,
+        previousHealth,
         health: victim.health,
         alive: victim.alive,
-        teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
+        teamKills: room.teamKills || { 
+          1: 0, 
+          2: 0, 
+          3: 0, 
+          4: 0 
+        }
       });
-      if (victim.alive === false) {
+      if (killed) {
         const victimId = victim.id;
+        // Delayed Respawn Time
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const latest = await this.ctx.storage.get("room");
         const respawning = latest?.players?.find((entry) => entry.id === victimId);
@@ -318,8 +341,17 @@ export class RoomDurableObject {
           respawning.alive = true;
           respawning.state = { ...(respawning.spawn || {}), pitch: -0.025, at: Date.now() };
           await this.ctx.storage.put("room", latest);
-          this.broadcast(latest, { type: "player:respawn", player: { id: victimId, health: 100, alive: true, state: respawning.state } });
-          this.broadcast(latest, { type: "room:update", room: this.publicRoom(latest) });
+          this.broadcast(latest, { type: "player:respawn", 
+            player: { id: victimId, 
+            health: 100,
+            alive: true, 
+            state: respawning.state 
+          }
+        });
+          this.broadcast(latest, { 
+            type: "room:update", 
+            room: this.publicRoom(latest) 
+          });
         }
       }
       return;
@@ -343,21 +375,87 @@ export class RoomDurableObject {
 
     if (message.type === "player:state" && message.state && typeof message.state === "object") {
       const state = message.state;
-      const x = Number(state.x), y = Number(state.y), z = Number(state.z);
-      const yaw = Number(state.yaw), pitch = Number(state.pitch);
+      const x = Number(state.x);
+      const y = Number(state.y);
+      const z = Number(state.z);
+      const yaw = Number(state.yaw);
+      const pitch = Number(state.pitch);
       if (![x, y, z, yaw, pitch].every(Number.isFinite)) return;
-      // Basic sanity bounds; authoritative movement validation will replace client-trusted positions.
-      if (Math.abs(x) > 30 || y < -2 || y > 12 || Math.abs(z) > 30) return;
-      const player = room.players.find((entry) => entry.id === playerId);
+      // Basic sanity bounds
+      if ( 
+      Math.abs(x) > 30 || 
+      Math.abs(z) > 30 ||
+      y < -2 || 
+      y > 12
+       ) { 
+        return;
+       }
+      const player = room.players.find(
+        (entry) => entry.id === playerId
+      );
       if (!player) return;
-      player.state = { x, y, z, yaw, pitch, at: Date.now() };
-      await this.ctx.storage.put("room", room);
-      this.broadcast(room, {
-        type: "player:state",
-        playerId,
-        nickname: player.nickname,
-        team: player.team,
-        state: player.state,
+      // player.state = { x, y, z, yaw, pitch, at: Date.now() };
+      // await this.ctx.storage.put("room", room);
+      // this.broadcast(room, {
+      // type: "player:state",
+       // playerId,
+       // nickname: player.nickname,
+       // team: player.team,
+       // state: player.state,
+     // });
+     // return;
+     const weaponSlot =
+        state.weaponSlot === "primary" ||
+        state.weaponSlot === "pistol" ||
+        state.weaponSlot === "melee"
+          ? state.weaponSlot
+          : "primary";
+
+    const weaponName =
+      typeof state.weaponName === "string"
+         ? state.weaponName.slice(0, 40)
+         : "";
+    
+    const weaponCategory = 
+      typeof state.weaponCategory === "string"
+         ? state.weaponCategory.slice(0, 40)
+         : "";
+        
+     const meleeType = 
+       typeof state.meleeType === "string"
+          ? state.meleeType.slice(0, 20)
+          : "";
+     const serverAt = Date.now();
+
+     player.state = {
+      x,
+      y,
+      z,
+      yaw,
+      pitch,
+
+      weaponSlot,
+      weaponName,
+      weaponCategory,
+      meleeType,
+
+      firing: Boolean(state.firing),
+      aiming: Boolean(state.aiming),
+      moving: Boolean(state.moving),
+      crouched: Boolean(state.crouched),
+
+      at: serverAt
+     };
+
+     await this.ctx.storage.put("room", room);
+
+     this.broadcast(room, {
+      type: "player:state",
+
+      playerId: player.id,
+      nickname: player.nickname,
+      team: player.team,
+      state: player.state,
       });
       return;
     }

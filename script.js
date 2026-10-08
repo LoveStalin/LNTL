@@ -989,41 +989,490 @@ function setBotTraining(enabled) {
 
 // Remote player representations for the first in-game multiplayer milestone.
 const remotePlayers = new Map();
+
+const REMOTE_INTERPOLATION_DELAY = 100;
+
+function createRemoteNetworkState(state = {}) {
+  return {
+    x: Number(state.x) || 0,
+    y: Number(state.y) || 0,
+    z: Number(state.z) || 0,
+
+    yaw: Number(state.yaw) || 0,
+    pitch: Number(state.pitch) || 0,
+
+    weaponSlot: state.weaponSlot || "primary",
+    weaponName: state.weaponName || "",
+    weaponCategory: state.weaponCategory || "",
+    meleeType: state.meleeType || "",
+
+    firing: Boolean(state.firing),
+    aiming: Boolean(state.aiming),
+    moving: Boolean(state.moving),
+    crouched: Boolean(state.crouched),
+
+    at: Number(state.at) || Date.now ()
+  };
+}
+    
 const remoteUniform = new THREE.MeshStandardMaterial({ color: '#a7c86b', roughness: .82 });
 const remoteVest = new THREE.MeshStandardMaterial({ color: '#374638', roughness: .8 });
 const remoteHead = new THREE.MeshStandardMaterial({ color: '#c49a79', roughness: .85 });
 function createRemotePlayer(id, nickname, team) {
   const group = new THREE.Group();
-  cube(group, remoteUniform, 0, 1.02, 0, .56, .76, .34, false);
-  cube(group, remoteVest, 0, 1.02, -.19, .62, .56, .12, false);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.2, 12, 10), remoteHead);
+
+  // =========================
+  // BODY
+  // =========================
+
+  cube(
+    group,
+    remoteUniform,
+    0, 1.02, 0,
+    .56, .76, .34,
+    false
+  );
+
+  cube(
+    group,
+    remoteVest,
+    0, 1.02, -.19,
+    .62, .56, .12,
+    false
+  );
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.2, 12, 10),
+    remoteHead
+  );
+
   head.position.y = 1.58;
   group.add(head);
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(.23, 12, 8), mats.helmet);
+
+  const helmet = new THREE.Mesh(
+    new THREE.SphereGeometry(.23, 12, 8),
+    mats.helmet
+  );
+
   helmet.position.set(0, 1.72, 0);
   helmet.scale.y = .65;
+
   group.add(helmet);
-  for (const side of [-1, 1]) {
-    cube(group, remoteUniform, side * .37, 1.05, -.05, .19, .62, .2, false).rotation.z = -side * .12;
-    cube(group, remoteUniform, side * .17, .37, 0, .22, .68, .24, false);
-  }
-  // Rifle silhouette attached to the remote soldier's hands.
-  const remoteRifle = new THREE.MeshStandardMaterial({ color: '#252a28', metalness: .55, roughness: .42 });
-  cube(group, remoteRifle, .22, 1.12, -.42, .13, .13, .72, false);
-  cube(group, remoteRifle, .22, 1.12, -.83, .055, .055, .32, false);
-  cube(group, remoteRifle, .22, .99, -.28, .11, .2, .16, false);
-  const labelCanvas = document.createElement('canvas');
-  labelCanvas.width = 256; labelCanvas.height = 64;
-  const ctx = labelCanvas.getContext('2d');
-  ctx.fillStyle = '#c8f36a'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
-  ctx.fillText((String(nickname || 'PLAYER') + (team ? ' · PHE ' + team : '')).slice(0, 24), 128, 40);
-  const texture = new THREE.CanvasTexture(labelCanvas);
-  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
-  label.position.y = 2.25; label.scale.set(2.2, .55, 1); group.add(label);
+
+  // =========================
+  // ARMS
+  // =========================
+
+  const leftArm = cube(
+    group,
+    remoteUniform,
+    -.37, 1.05, -.05,
+    .19, .62, .2,
+    false
+  );
+
+  leftArm.rotation.z = .12;
+
+  const rightArm = cube(
+    group,
+    remoteUniform,
+    .37, 1.05, -.05,
+    .19, .62, .2,
+    false
+  );
+
+  rightArm.rotation.z = -.12;
+
+  // =========================
+  // LEGS
+  // =========================
+
+  cube(
+    group,
+    remoteUniform,
+    -.17, .37, 0,
+    .22, .68, .24,
+    false
+  );
+
+  cube(
+    group,
+    remoteUniform,
+    .17, .37, 0,
+    .22, .68, .24,
+    false
+  );
+
+  // =========================
+  // WEAPON HOLDER
+  // =========================
+
+  const weaponRoot = new THREE.Group();
+
+  weaponRoot.position.set(
+    .22,
+    1.12,
+    -.32
+  );
+
+  group.add(weaponRoot);
+
+  group.userData.weaponRoot = weaponRoot;
+  group.userData.weaponType = "";
+
+  // =========================
+  // NAME
+  // =========================
+
+  const labelCanvas =
+    document.createElement("canvas");
+
+  labelCanvas.width = 256;
+  labelCanvas.height = 64;
+
+  const ctx =
+    labelCanvas.getContext("2d");
+
+  ctx.fillStyle = "#c8f36a";
+  ctx.font = "bold 28px monospace";
+  ctx.textAlign = "center";
+
+  ctx.fillText(
+    (
+      String(nickname || "PLAYER") +
+      (team ? " · PHE " + team : "")
+    ).slice(0, 24),
+    128,
+    40
+  );
+
+  const texture =
+    new THREE.CanvasTexture(labelCanvas);
+
+  const label =
+    new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false
+      })
+    );
+
+  label.position.y = 2.25;
+  label.scale.set(2.2, .55, 1);
+
+  group.add(label);
+
+  // =========================
+  // NETWORK STATE
+  // =========================
+
   group.userData.nickname = nickname;
+  group.userData.team = team;
+
+  group.userData.network = {
+    current: createRemoteNetworkState(),
+    previous: null,
+    target: null,
+    lastReceived: performance.now(),
+
+    firingUntil: 0,
+    weaponName: ""
+  };
+
+  group.userData.lastWeaponName = "";
+
   scene.add(group);
   remotePlayers.set(id, group);
+
   return group;
+}
+function clearRemoteWeapon(remote) {
+  const root = remote?.userData?.weaponRoot;
+
+  if (!root) return;
+
+  root.clear();
+}
+
+function buildRemoteWeapon(remote, state) {
+  const root = remote?.userData?.weaponRoot;
+
+  if (!root) return;
+
+  clearRemoteWeapon(remote);
+
+  const slot = state.weaponSlot || "primary";
+  const name = String(state.weaponName || "").toLowerCase();
+
+  const metal = new THREE.MeshStandardMaterial({
+    color: "#252a28",
+    metalness: .72,
+    roughness: .32
+  });
+
+  const dark = new THREE.MeshStandardMaterial({
+    color: "#111414",
+    metalness: .45,
+    roughness: .5
+  });
+
+  const blade = new THREE.MeshStandardMaterial({
+    color: "#aeb5b8",
+    metalness: .92,
+    roughness: .18
+  });
+
+  // =========================
+  // MELEE
+  // =========================
+
+  if (slot === "melee") {
+
+    if (
+      name.includes("katana")
+    ) {
+      const sword = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          .055,
+          .055,
+          .9
+        ),
+        blade
+      );
+
+      sword.position.z = -.48;
+      sword.rotation.y = Math.PI / 2;
+
+      root.add(sword);
+
+      const guard = new THREE.Mesh(
+        new THREE.TorusGeometry(
+          .13,
+          .025,
+          8,
+          16
+        ),
+        dark
+      );
+
+      guard.rotation.y = Math.PI / 2;
+      guard.position.z = -.04;
+
+      root.add(guard);
+
+    } else if (
+      name.includes("búa") ||
+      name.includes("bua") ||
+      name.includes("axe")
+    ) {
+      const handle = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .035,
+          .045,
+          .85,
+          8
+        ),
+        new THREE.MeshStandardMaterial({
+          color: "#5c3925",
+          roughness: .85
+        })
+      );
+
+      handle.rotation.x = Math.PI / 2;
+      handle.position.z = -.42;
+
+      root.add(handle);
+
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          .42,
+          .22,
+          .12
+        ),
+        metal
+      );
+
+      head.position.z = -.04;
+
+      root.add(head);
+
+    } else if (
+      name.includes("chảo") ||
+      name.includes("chao") ||
+      name.includes("pan")
+    ) {
+      const pan = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .22,
+          .25,
+          .07,
+          16
+        ),
+        dark
+      );
+
+      pan.rotation.x = Math.PI / 2;
+      pan.position.z = -.18;
+
+      root.add(pan);
+
+      const handle = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .045,
+          .05,
+          .55,
+          8
+        ),
+        dark
+      );
+
+      handle.rotation.x = Math.PI / 2;
+      handle.position.z = -.52;
+
+      root.add(handle);
+
+    } else {
+      // Knife / Dao
+      const handle = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .045,
+          .05,
+          .32,
+          8
+        ),
+        dark
+      );
+
+      handle.rotation.x = Math.PI / 2;
+      handle.position.z = -.15;
+
+      root.add(handle);
+
+      const knife = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          .075,
+          .035,
+          .45
+        ),
+        blade
+      );
+
+      knife.position.z = -.52;
+
+      root.add(knife);
+    }
+
+    remote.userData.weaponType = "melee";
+    return;
+  }
+
+  // =========================
+  // PISTOL
+  // =========================
+
+  if (slot === "pistol") {
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        .13,
+        .14,
+        .38
+      ),
+      metal
+    );
+
+    body.position.z = -.25;
+
+    root.add(body);
+
+    const barrel = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        .075,
+        .075,
+        .28
+      ),
+      dark
+    );
+
+    barrel.position.z = -.55;
+
+    root.add(barrel);
+
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        .09,
+        .25,
+        .1
+      ),
+      dark
+    );
+
+    grip.position.set(
+      0,
+      -.16,
+      -.15
+    );
+
+    grip.rotation.x = -.18;
+
+    root.add(grip);
+
+    remote.userData.weaponType = "pistol";
+    return;
+  }
+
+  // =========================
+  // PRIMARY
+  // =========================
+
+  const rifleBody = new THREE.Mesh(
+    new THREE.BoxGeometry(
+      .14,
+      .16,
+      .68
+    ),
+    metal
+  );
+
+  rifleBody.position.z = -.42;
+
+  root.add(rifleBody);
+
+  const rifleBarrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      .035,
+      .04,
+      .7,
+      8
+    ),
+    dark
+  );
+
+  rifleBarrel.rotation.x = Math.PI / 2;
+  rifleBarrel.position.z = -.94;
+
+  root.add(rifleBarrel);
+
+  const magazine = new THREE.Mesh(
+    new THREE.BoxGeometry(
+      .1,
+      .26,
+      .13
+    ),
+    dark
+  );
+
+  magazine.position.set(
+    0,
+    -.18,
+    -.36
+  );
+
+  magazine.rotation.x = -.15;
+
+  root.add(magazine);
+
+  remote.userData.weaponType = "primary";
 }
 function hitRemotePlayer(start, end) {
   let nearest = null;
@@ -1062,11 +1511,96 @@ function removeRemotePlayer(id) {
   remotePlayers.delete(id);
 }
 window.addEventListener('lntl:remote-state', (event) => {
-  const { playerId, nickname, team, state } = event.detail || {};
-  if (!playerId || !state || playerId === window.lntlMultiplayer?.getPlayerId()) return;
-  const remote = remotePlayers.get(playerId) || createRemotePlayer(playerId, nickname, team);
-  remote.position.set(state.x, state.y, state.z);
-  remote.rotation.y = state.yaw;
+  const {
+    playerId,
+    nickname,
+    team,
+    state
+  } = event.detail || {};
+
+  if (
+    !playerId ||
+    !state ||
+    playerId === window.lntlMultiplayer?.getPlayerId()
+  ) {
+    return;
+  }
+
+  const remote =
+    remotePlayers.get(playerId) ||
+    createRemotePlayer(
+      playerId,
+      nickname,
+      team
+    );
+
+  const network =
+    remote.userData.network;
+
+  const next =
+    createRemoteNetworkState(state);
+
+  /*
+   * First packet:
+   * snap directly into place.
+   */
+  if (!network.target) {
+    network.current = next;
+    network.target = next;
+    network.previous = next;
+
+    remote.position.set(
+      next.x,
+      next.y,
+      next.z
+    );
+
+    remote.rotation.y =
+      next.yaw;
+
+  } else {
+    /*
+     * Keep previous + target.
+     * animate() will interpolate between them.
+     */
+    network.previous =
+      network.target;
+
+    network.target =
+      next;
+  }
+
+  network.lastReceived =
+    performance.now();
+
+  /*
+   * Weapon changed.
+   */
+  if (
+    remote.userData.lastWeaponName !==
+    next.weaponName ||
+    remote.userData.lastWeaponSlot !==
+    next.weaponSlot
+  ) {
+    buildRemoteWeapon(
+      remote,
+      next
+    );
+
+    remote.userData.lastWeaponName =
+      next.weaponName;
+
+    remote.userData.lastWeaponSlot =
+      next.weaponSlot;
+  }
+
+  /*
+   * Fire flash timer.
+   */
+  if (next.firing) {
+    network.firingUntil =
+      performance.now() + 90;
+  }
 });
 window.addEventListener('lntl:player-damage', (event) => {
   const { victimId, health, alive } = event.detail || {};
@@ -1508,17 +2042,53 @@ function shoot() {
   const multiplayerConnected = window.lntlMultiplayer?.isConnected() ?? false;
   // PvP hit scan: evaluate the complete shot ray immediately so fast bullets cannot skip remote players between frames.
   if (multiplayerConnected) {
-    const maxDistance = 120;
-    const rayEnd = origin.clone().addScaledVector(direction, maxDistance);
-    const obstacleDistance = firstObstacleDistance(origin, rayEnd);
-    const hit = hitRemotePlayer(origin, rayEnd);
-    // Aiming starts at the camera; allow a small tolerance for the low-poly remote hitbox.
-    if (hit && hit.distance <= obstacleDistance + 0.02 && hit.distance <= maxDistance) {
-      window.dispatchEvent(new CustomEvent('lntl:player-hit', {
-        detail: { victimId: hit.id, damage: damageAtDistance(Number(weapon.damage) || 25, hit.distance) }
-      }));
-    }
+  const maxDistance = 120;
+
+  const rayEnd =
+    origin.clone().addScaledVector(
+      direction,
+      maxDistance
+    );
+
+  const obstacleDistance =
+    firstObstacleDistance(
+      origin,
+      rayEnd
+    );
+
+  const hit =
+    hitRemotePlayer(
+      origin,
+      rayEnd
+    );
+
+  if (
+    hit &&
+    hit.distance <=
+      Math.min(
+        obstacleDistance,
+        maxDistance
+      )
+  ) {
+    const damage =
+      damageAtDistance(
+        Number(weapon.damage) || 25,
+        hit.distance
+      );
+
+    window.dispatchEvent(
+      new CustomEvent(
+        'lntl:player-hit',
+        {
+          detail: {
+            victimId: hit.id,
+            damage
+          }
+        }
+      )
+    );
   }
+}
   const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
   bullet.position.copy(origin);
   bullet.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
@@ -2004,16 +2574,223 @@ let multiplayerStateTimer = 0;
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), .05);
+  // ========================================
+// REMOTE PLAYER INTERPOLATION
+// ========================================
+
+const now = performance.now();
+
+for (const [id, remote] of remotePlayers) {
+  const network =
+    remote.userData.network;
+
+  if (
+    !network ||
+    !network.target
+  ) {
+    continue;
+  }
+
+  const target =
+    network.target;
+
+  const current =
+    network.current;
+
+  /*
+   * Smooth position.
+   */
+  const interpolationSpeed = 18;
+
+  current.x +=
+    (target.x - current.x) *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  current.y +=
+    (target.y - current.y) *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  current.z +=
+    (target.z - current.z) *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  /*
+   * Smooth yaw without 360° snapping.
+   */
+  let yawDifference =
+    target.yaw - current.yaw;
+
+  while (
+    yawDifference > Math.PI
+  ) {
+    yawDifference -=
+      Math.PI * 2;
+  }
+
+  while (
+    yawDifference < -Math.PI
+  ) {
+    yawDifference +=
+      Math.PI * 2;
+  }
+
+  current.yaw +=
+    yawDifference *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  /*
+   * Smooth pitch.
+   */
+  current.pitch +=
+    (target.pitch - current.pitch) *
+    Math.min(
+      1,
+      delta * interpolationSpeed
+    );
+
+  remote.position.set(
+    current.x,
+    current.y,
+    current.z
+  );
+
+  remote.rotation.y =
+    current.yaw;
+
+  /*
+   * Weapon movement.
+   */
+  const weaponRoot =
+    remote.userData.weaponRoot;
+
+  if (weaponRoot) {
+    const isFiring =
+      now < network.firingUntil;
+
+    const moving =
+      target.moving;
+
+    const bob =
+      moving
+        ? Math.sin(now * .012) * .025
+        : 0;
+
+    weaponRoot.position.y =
+      .12 + bob;
+
+    weaponRoot.rotation.x =
+      isFiring ? -.12 : 0;
+
+    weaponRoot.rotation.y =
+      isFiring ? .05 : 0;
+
+    /*
+     * Melee swing / firing recoil.
+     */
+    if (
+      target.weaponSlot === "melee"
+    ) {
+      weaponRoot.rotation.x +=
+        isFiring ? -.45 : 0;
+
+      weaponRoot.position.z =
+        isFiring ? -.08 : 0;
+    } else {
+      weaponRoot.position.z =
+        isFiring ? -.045 : 0;
+    }
+  }
+
+  /*
+   * Crouch.
+   */
+  const targetScaleY =
+    target.crouched
+      ? .78
+      : 1;
+
+  remote.scale.y +=
+    (targetScaleY - remote.scale.y) *
+    Math.min(
+      1,
+      delta * 12
+    );
+}
   playerInvulnerableTimer = Math.max(0, playerInvulnerableTimer - delta);
   damageFlashTimer = Math.max(0, damageFlashTimer - delta);
   playerHitSlowTimer = Math.max(0, playerHitSlowTimer - delta);
   if (damageFlashTimer === 0) playerHealthPanel.classList.remove('hit');
   multiplayerStateTimer += delta;
-  if (multiplayerStateTimer >= 0.05 && started && window.lntlMultiplayer?.isConnected()) {
+  if (
+  multiplayerStateTimer >= 0.033 &&
+  started &&
+  window.lntlMultiplayer?.isConnected()
+) {
     multiplayerStateTimer = 0;
-    window.dispatchEvent(new CustomEvent('lntl:send-state', { detail: {
-      x: player.position.x, y: player.position.y, z: player.position.z, yaw, pitch
-    }}));
+    window.dispatchEvent(
+  new CustomEvent('lntl:send-state', {
+    detail: {
+      x: player.position.x,
+      y: player.position.y,
+      z: player.position.z,
+
+      yaw,
+      pitch,
+
+      // =========================
+      // WEAPON STATE
+      // =========================
+
+      weaponSlot:
+        activeWeaponSlot,
+
+      weaponName:
+        meleeMode
+          ? meleeWeapons[selectedMeleeIndex]?.name || "Dao"
+          : weapons[selectedWeapon]?.name || "",
+
+      weaponCategory:
+        meleeMode
+          ? "Melee"
+          : weapons[selectedWeapon]?.category || "",
+
+      meleeType:
+        meleeMode
+          ? meleeWeapons[selectedMeleeIndex]?.type || "knife"
+          : "",
+
+      // =========================
+      // ACTION STATE
+      // =========================
+
+      firing:
+        shooting ||
+        meleeSwing > 0,
+
+      aiming,
+
+      moving:
+        keys.has("KeyW") ||
+        keys.has("KeyA") ||
+        keys.has("KeyS") ||
+        keys.has("KeyD"),
+
+      crouched
+    }
+  })
+);
   }
   const safeZoneWave = Math.sin(performance.now() * .0017);
   safeZone.position.y = safeZoneBaseY + safeZoneWave * .055;
