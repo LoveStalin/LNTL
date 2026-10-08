@@ -1005,6 +1005,7 @@ function createRemoteNetworkState(state = {}) {
 
     yaw: Number(state.yaw) || 0,
     pitch: Number(state.pitch) || 0,
+    lean: Number(state.lean) || 0,
 
     weaponSlot: state.weaponSlot || "primary",
     weaponName: state.weaponName || "",
@@ -1088,8 +1089,8 @@ function createRemotePlayer(id, nickname, team) {
     new THREE.CylinderGeometry(.10, .11, .12, 8),
     remoteHead
   );
-  neck.position.set(0, .01, 0);
-  group.add(neck);
+  neck.position.set(0, 0.02, 0);
+  headPivot.add(neck);
 
   group.add(headPivot);
   group.userData.headPivot = headPivot;
@@ -2776,6 +2777,11 @@ for (const [id, remote] of remotePlayers) {
       -.72,
       .58
     );
+    headPivot.rotation.z = THREE.MathUtils.clamp(
+      current.lean || 0,
+      -.42,
+      .42
+    );
   }
 
   /*
@@ -2861,6 +2867,7 @@ for (const [id, remote] of remotePlayers) {
 
       yaw,
       pitch,
+      lean: camera.rotation.z,
 
       // =========================
       // WEAPON STATE
