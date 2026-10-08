@@ -853,6 +853,9 @@ const botStateLabel = document.querySelector('#bot-state');
 const botHitPartLabel = document.querySelector('#bot-hit-part');
 const damageVignette = document.querySelector('#damage-vignette');
 const damageDirection = document.querySelector('#damage-direction');
+const deathOverlay = document.querySelector('#death-overlay');
+const deathKillerName = document.querySelector('#death-killer-name');
+const deathCountdown = document.querySelector('#death-countdown');
 const playerHealthPanel = document.querySelector('#player-health');
 const botTrainingToggle = document.querySelector('#bot-training');
 const botModeLabel = document.querySelector('#bot-mode-label');
@@ -921,6 +924,8 @@ function updateAimUI() {
 }
 
 let playerHealth = 100;
+let playerDead = false;
+let deathUntil = 0;
 let botHealth = 100;
 let botAlive = true;
 let botRespawnTimer = 0;
@@ -1602,15 +1607,46 @@ window.addEventListener('lntl:remote-state', (event) => {
       performance.now() + 90;
   }
 });
+function showDeathScreen(attackerName) {
+  playerDead = true;
+  shooting = false;
+  aiming = false;
+  isReloading = false;
+  reloadTimer = 0;
+  if (document.pointerLockElement === canvas) {
+    document.exitPointerLock?.();
+  }
+  document.body.classList.remove('scope-active');
+  if (deathKillerName) deathKillerName.textContent = attackerName || 'ĐỐI PHƯƠNG';
+  deathUntil = performance.now() + 3000;
+  if (deathCountdown) deathCountdown.textContent = '3.0';
+  if (deathOverlay) deathOverlay.hidden = false;
+}
+
+function hideDeathScreen() {
+  playerDead = false;
+  deathUntil = 0;
+  if (deathOverlay) deathOverlay.hidden = true;
+}
+
 window.addEventListener('lntl:player-damage', (event) => {
-  const { victimId, health, alive } = event.detail || {};
+  const { victimId, health, alive, attackerNickname } = event.detail || {};
   if (victimId === window.lntlMultiplayer?.getPlayerId()) {
     playerHealth = Math.max(0, Number(health) || 0);
     updateCombatUI();
-    if (alive === false) playerInvulnerableTimer = 3;
+    if (alive === false) {
+      playerInvulnerableTimer = 3;
+      showDeathScreen(attackerNickname);
+    }
   } else {
     const remote = remotePlayers.get(victimId);
-    if (remote && alive === false) remote.visible = false;
+    if (remote && alive === false) {
+      remote.visible = true;
+      remote.userData.dead = true;
+      remote.rotation.x = -Math.PI / 2;
+      remote.rotation.z = 0;
+      remote.userData.network.firingUntil = 0;
+    }
   }
 });
 window.addEventListener('lntl:player-respawn', (event) => {
@@ -1618,6 +1654,7 @@ window.addEventListener('lntl:player-respawn', (event) => {
   if (!respawned?.id) return;
   if (respawned.id === window.lntlMultiplayer?.getPlayerId()) {
     playerHealth = 100;
+    hideDeathScreen();
     if (respawned.state && [respawned.state.x, respawned.state.y, respawned.state.z, respawned.state.yaw].every(Number.isFinite)) {
       player.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
       yaw = Number(respawned.state.yaw);
@@ -2034,7 +2071,7 @@ function updateBoltAction(delta) {
 }
 
 function shoot() {
-  if (!started || armoryOpen || isReloading) return;
+  if (!started || playerDead || armoryOpen || isReloading) return;
 
   if (meleeMode) {
     meleeAttack();
@@ -2377,6 +2414,7 @@ function updateBot(delta) {
 }
 
 function rotateCamera(deltaX, deltaY) {
+  if (playerDead) return;
   yaw -= deltaX * .0024;
   pitch = THREE.MathUtils.clamp(pitch - deltaY * .002, -.9, 1.35);
   camera.rotation.x = pitch;
@@ -2933,7 +2971,7 @@ for (const [id, remote] of remotePlayers) {
   let moveForward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
   let moveSide = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
   const moving = moveForward !== 0 || moveSide !== 0;
-  if (moving && started) {
+  if (moving && started && !playerDead) {
     const length = Math.hypot(moveForward, moveSide);
     moveForward /= length;
     moveSide /= length;
