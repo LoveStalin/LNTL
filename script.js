@@ -1086,10 +1086,10 @@ function createRemotePlayer(id, nickname, team) {
 
   // Small neck keeps the head visibly connected while it pitches.
   const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(.095, .11, .22, 8),
+    new THREE.CylinderGeometry(.095, .11, .28, 8),
     remoteHead
   );
-  neck.position.set(0, 0.08, 0);
+  neck.position.set(0, 0.10, 0);
   headPivot.add(neck);
 
   group.add(headPivot);
@@ -2786,8 +2786,8 @@ for (const [id, remote] of remotePlayers) {
     );
     headPivot.rotation.z = THREE.MathUtils.clamp(
       current.lean || 0,
-      -.42,
-      .42
+      -.58,
+      .58
     );
   }
 
@@ -2930,9 +2930,9 @@ for (const [id, remote] of remotePlayers) {
   player.rotation.y = yaw;
   camera.rotation.x = pitch;
   const leanInput = Number(keys.has('KeyE')) - Number(keys.has('KeyQ'));
-  const leanAmount = aiming ? .28 : .42;
+  const leanAmount = aiming ? .34 : .52;
   camera.position.x += (leanInput * leanAmount - camera.position.x) * Math.min(1, delta * 9);
-  camera.rotation.z += (leanInput * -.14 - camera.rotation.z) * Math.min(1, delta * 9);
+  camera.rotation.z += (leanInput * -.28 - camera.rotation.z) * Math.min(1, delta * 9);
   const targetFov = meleeMode ? 72 : (aiming ? (weapons[selectedWeapon].category === 'Sniper Rifles' ? 22 : 50) : 72);
   const nextFov = THREE.MathUtils.damp(camera.fov, targetFov, 9, delta);
   if (Math.abs(nextFov - camera.fov) > .01) {
