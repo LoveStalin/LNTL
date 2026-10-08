@@ -1674,7 +1674,13 @@ window.addEventListener('lntl:player-respawn', (event) => {
     const remote = remotePlayers.get(respawned.id);
     if (remote) {
       remote.visible = true;
-      if (respawned.state) remote.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
+      remote.userData.dead = false;
+      remote.rotation.x = 0;
+      remote.rotation.z = 0;
+      if (respawned.state) {
+        remote.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
+        remote.rotation.y = respawned.state.yaw ?? remote.rotation.y;
+      }
     }
   }
 });
