@@ -355,6 +355,7 @@ export class RoomDurableObject {
       this.broadcast(room, {
         type: "player:damage",
         attackerId: attacker.id,
+        attackerNickname: attacker.nickname,
         victimId: victim.id,
         attackerTeam: attacker.team,
         victimTeam: victim.team,
@@ -375,7 +376,18 @@ export class RoomDurableObject {
         if (respawning && respawning.alive === false) {
           respawning.health = 100;
           respawning.alive = true;
-          respawning.state = { ...(respawning.spawn || {}), at: Date.now(), firing: false, moving: false };
+          respawning.state = {
+            ...(respawning.spawn || {}),
+            at: Date.now(),
+            weaponSlot: respawning.state?.weaponSlot || "primary",
+            weaponName: respawning.state?.weaponName || "CARBINE",
+            weaponCategory: respawning.state?.weaponCategory || "Rifles",
+            meleeType: respawning.state?.meleeType || "",
+            firing: false,
+            aiming: false,
+            moving: false,
+            crouched: false
+          };
           await this.ctx.storage.put("room", latest);
           this.broadcast(latest, { type: "player:respawn", player: { id: victimId, health: 100, alive: true, state: respawning.state } });
           this.broadcast(latest, { type: "room:update", room: this.publicRoom(latest) });
