@@ -3,20 +3,22 @@ const ROOM_CODE_LENGTH = 6;
 const MAX_PLAYERS = 12;
 
 const MAX_TEAM_SIZE = 3;
-const FACTION_BASES = [
-  { team: 1, yaw: Math.PI / 2, slots: [
-    { x: -20.2, y: 0.1, z: -2.2 }, { x: -20.2, y: 0.1, z: 0 }, { x: -20.2, y: 0.1, z: 2.2 },
-  ] },
-  { team: 2, yaw: -Math.PI / 2, slots: [
-    { x: 20.2, y: 0.1, z: -2.2 }, { x: 20.2, y: 0.1, z: 0 }, { x: 20.2, y: 0.1, z: 2.2 },
-  ] },
-  { team: 3, yaw: 0, slots: [
-    { x: -2.2, y: 0.1, z: -20.2 }, { x: 0, y: 0.1, z: -20.2 }, { x: 2.2, y: 0.1, z: -20.2 },
-  ] },
-  { team: 4, yaw: Math.PI, slots: [
-    { x: -2.2, y: 0.1, z: 20.2 }, { x: 0, y: 0.1, z: 20.2 }, { x: 2.2, y: 0.1, z: 20.2 },
-  ] },
-];
+// Three.js uses forward = (-sin(yaw), 0, -cos(yaw)).
+  // Each faction starts behind its house and faces toward the center of the map.
+  const FACTION_BASES = [
+    { team: 1, yaw: -Math.PI / 2, slots: [
+      { x: -20.2, y: 0.1, z: -2.2 }, { x: -20.2, y: 0.1, z: 0 }, { x: -20.2, y: 0.1, z: 2.2 },
+    ] },
+    { team: 2, yaw: Math.PI / 2, slots: [
+      { x: 20.2, y: 0.1, z: -2.2 }, { x: 20.2, y: 0.1, z: 0 }, { x: 20.2, y: 0.1, z: 2.2 },
+    ] },
+    { team: 3, yaw: Math.PI, slots: [
+      { x: -2.2, y: 0.1, z: -20.2 }, { x: 0, y: 0.1, z: -20.2 }, { x: 2.2, y: 0.1, z: -20.2 },
+    ] },
+    { team: 4, yaw: 0, slots: [
+      { x: -2.2, y: 0.1, z: 20.2 }, { x: 0, y: 0.1, z: 20.2 }, { x: 2.2, y: 0.1, z: 20.2 },
+    ] },
+  ];
 
 const WEAPON_DAMAGE = {
   CARBINE: 24, S1897: 38, S686: 46, UMP45: 20, UZI: 15, M416: 25, AKM: 34,
