@@ -263,6 +263,7 @@ window.addEventListener("lntl:send-state", (event) => {
 
       yaw: Number(state.yaw) || 0,
       pitch: Number(state.pitch) || 0,
+      lean: Number(state.lean) || 0,
 
       // Multiplayer-specific-state
       weaponSlot: state.weaponSlot || "primary",
