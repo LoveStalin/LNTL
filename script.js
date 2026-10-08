@@ -2807,6 +2807,7 @@ for (const [id, remote] of remotePlayers) {
   if (
   multiplayerStateTimer >= 0.033 &&
   started &&
+  !playerDead &&
   window.lntlMultiplayer?.isConnected()
 ) {
     multiplayerStateTimer = 0;
