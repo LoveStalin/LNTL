@@ -2699,11 +2699,14 @@ for (const [id, remote] of remotePlayers) {
         ? Math.sin(now * .012) * .025
         : 0;
 
+    // Keep the remote weapon at the hands instead of dropping it to the feet.
+    // The remote weapon uses the same -Z forward axis as the player camera.
     weaponRoot.position.y =
-      .12 + bob;
+      1.12 + bob;
 
+    // Mirror the remote player's vertical aim as well as horizontal yaw.
     weaponRoot.rotation.x =
-      isFiring ? -.12 : 0;
+      target.pitch + (isFiring ? -.12 : 0);
 
     weaponRoot.rotation.y =
       isFiring ? .05 : 0;
