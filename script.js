@@ -1620,9 +1620,16 @@ window.addEventListener('lntl:player-respawn', (event) => {
     playerHealth = 100;
     if (respawned.state && [respawned.state.x, respawned.state.y, respawned.state.z, respawned.state.yaw].every(Number.isFinite)) {
       player.position.set(respawned.state.x, respawned.state.y, respawned.state.z);
-      yaw = respawned.state.yaw;
-      pitch = respawned.state.pitch || 0;
-      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+      yaw = Number(respawned.state.yaw);
+      pitch = Number.isFinite(respawned.state.pitch) ? respawned.state.pitch : -.025;
+
+      // Yaw belongs to the player body. The camera is a child of the player,
+      // so applying yaw to the camera as well would rotate it twice after respawn.
+      player.rotation.y = yaw;
+      camera.rotation.order = 'YXZ';
+      camera.rotation.x = pitch;
+      camera.rotation.y = 0;
+      camera.rotation.z = 0;
     }
     playerInvulnerableTimer = 1.5;
     updateCombatUI();
@@ -1635,6 +1642,18 @@ window.addEventListener('lntl:player-respawn', (event) => {
   }
 });
 window.addEventListener('lntl:remote-left', (event) => removeRemotePlayer(event.detail?.playerId));
+window.addEventListener('lntl:multiplayer-spawn', (event) => {
+  const state = event.detail?.state;
+  if (!state || ![state.x, state.y, state.z, state.yaw].every(Number.isFinite)) return;
+  player.position.set(state.x, state.y, state.z);
+  yaw = state.yaw;
+  pitch = Number.isFinite(state.pitch) ? state.pitch : -.025;
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+  verticalVelocity = 0;
+  grounded = true;
+});
+
 window.addEventListener('lntl:multiplayer', (event) => {
   const detail = event.detail || {};
   if (detail.connected && detail.playerId && detail.room?.players) {
@@ -2687,11 +2706,14 @@ for (const [id, remote] of remotePlayers) {
         ? Math.sin(now * .012) * .025
         : 0;
 
+    // Keep the remote weapon at the hands instead of dropping it to the feet.
+    // The remote weapon uses the same -Z forward axis as the player camera.
     weaponRoot.position.y =
-      .12 + bob;
+      1.12 + bob;
 
+    // Mirror the remote player's vertical aim as well as horizontal yaw.
     weaponRoot.rotation.x =
-      isFiring ? -.12 : 0;
+      target.pitch + (isFiring ? -.12 : 0);
 
     weaponRoot.rotation.y =
       isFiring ? .05 : 0;

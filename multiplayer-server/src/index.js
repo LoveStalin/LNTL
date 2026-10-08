@@ -2,6 +2,42 @@ const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 6;
 const MAX_PLAYERS = 12;
 
+const MAX_TEAM_SIZE = 3;
+// Three.js uses forward = (-sin(yaw), 0, -cos(yaw)).
+  // Each faction starts behind its house and faces toward the center of the map.
+  const FACTION_BASES = [
+    { team: 1, yaw: -Math.PI / 2, slots: [
+      { x: -20.2, y: 0.1, z: -2.2 }, { x: -20.2, y: 0.1, z: 0 }, { x: -20.2, y: 0.1, z: 2.2 },
+    ] },
+    { team: 2, yaw: Math.PI / 2, slots: [
+      { x: 20.2, y: 0.1, z: -2.2 }, { x: 20.2, y: 0.1, z: 0 }, { x: 20.2, y: 0.1, z: 2.2 },
+    ] },
+    { team: 3, yaw: Math.PI, slots: [
+      { x: -2.2, y: 0.1, z: -20.2 }, { x: 0, y: 0.1, z: -20.2 }, { x: 2.2, y: 0.1, z: -20.2 },
+    ] },
+    { team: 4, yaw: 0, slots: [
+      { x: -2.2, y: 0.1, z: 20.2 }, { x: 0, y: 0.1, z: 20.2 }, { x: 2.2, y: 0.1, z: 20.2 },
+    ] },
+  ];
+
+const WEAPON_DAMAGE = {
+  CARBINE: 24, S1897: 38, S686: 46, UMP45: 20, UZI: 15, M416: 25, AKM: 34,
+  M24: 82, Kar98k: 72, AWM: 100, M249: 20, PKM: 22,
+  P1911: 28, P92: 23, P18C: 16, "Desert Eagle": 75, "Sawed-off": 75,
+  Dao: 50, "Búa": 60, Katana: 78, "Chảo": 55,
+};
+
+function getSpawnForTeam(room, team) {
+  const base = FACTION_BASES.find((entry) => entry.team === team);
+  if (!base) return null;
+  const members = room.players.filter((entry) => entry.team === team);
+  if (members.length >= MAX_TEAM_SIZE) return null;
+  const used = new Set(members.map((entry) => entry.spawnSlot).filter(Number.isInteger));
+  const slotIndex = base.slots.findIndex((_, index) => !used.has(index));
+  if (slotIndex < 0) return null;
+  return { ...base.slots[slotIndex], yaw: base.yaw, spawnSlot: slotIndex };
+}
+
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -168,51 +204,28 @@ export class RoomDurableObject {
       const client = pair[0];
       const server = pair[1];
       const playerId = crypto.randomUUID();
-      // Four faction bases sit behind the four houses. Each house has three spawn slots.
-      // Pick the least-populated faction so 2-4 players never share a faction by default,
-      // and a full 12-player room becomes a 3v3v3v3 match.
-      const bases = [
-        { team: 1, yaw: Math.PI / 2, slots: [
-          { x: -20.2, y: 0.1, z: -2.2 }, { x: -20.2, y: 0.1, z: 0 }, { x: -20.2, y: 0.1, z: 2.2 },
-        ] },
-        { team: 2, yaw: -Math.PI / 2, slots: [
-          { x: 20.2, y: 0.1, z: -2.2 }, { x: 20.2, y: 0.1, z: 0 }, { x: 20.2, y: 0.1, z: 2.2 },
-        ] },
-        { team: 3, yaw: 0, slots: [
-          { x: -2.2, y: 0.1, z: -20.2 }, { x: 0, y: 0.1, z: -20.2 }, { x: 2.2, y: 0.1, z: -20.2 },
-        ] },
-        { team: 4, yaw: Math.PI, slots: [
-          { x: -2.2, y: 0.1, z: 20.2 }, { x: 0, y: 0.1, z: 20.2 }, { x: 2.2, y: 0.1, z: 20.2 },
-        ] },
-      ];
-      const teamCounts = bases.map((base) => ({
-        ...base,
+      const teamCounts = FACTION_BASES.map((base) => ({
+        team: base.team,
         count: room.players.filter((entry) => entry.team === base.team).length,
       }));
-      const availableBases = teamCounts.filter((base) => base.count < base.slots.length);
-      const minCount = Math.min(...availableBases.map((base) => base.count));
-      const leastPopulated = availableBases.filter((base) => base.count === minCount);
-      const selectedBase = leastPopulated[Math.floor(Math.random() * leastPopulated.length)];
-      const usedSlots = new Set(
-        room.players
-          .filter((entry) => entry.team === selectedBase.team)
-          .map((entry) => entry.spawnSlot)
-          .filter(Number.isInteger),
-      );
-      const slotIndex = selectedBase.slots.findIndex((_, index) => !usedSlots.has(index));
-      if (slotIndex < 0) return json({ error: "No spawn slots available for this faction." }, 409);
-      const spawn = { ...selectedBase.slots[slotIndex], yaw: selectedBase.yaw };
+      const minCount = Math.min(...teamCounts.map((entry) => entry.count));
+      const candidates = teamCounts.filter((entry) => entry.count === minCount && entry.count < MAX_TEAM_SIZE);
+      if (!candidates.length) return json({ error: "All factions are full." }, 409);
+      const selectedTeam = candidates[Math.floor(Math.random() * candidates.length)].team;
+      const spawn = getSpawnForTeam(room, selectedTeam);
+      if (!spawn) return json({ error: "No spawn slot available for this faction." }, 409);
+
       const player = {
         id: playerId,
         nickname,
-        team: selectedBase.team,
-        spawnSlot: slotIndex,
-        spawn: { ...spawn, pitch: -0.025 },
+        team: selectedTeam,
+        spawnSlot: spawn.spawnSlot,
+        spawn: { x: spawn.x, y: spawn.y, z: spawn.z, yaw: spawn.yaw, pitch: -0.025 },
         health: 100,
         alive: true,
         ready: false,
         joinedAt: Date.now(),
-        state: { ...spawn, pitch: -0.025, at: Date.now() },
+        state: { x: spawn.x, y: spawn.y, z: spawn.z, yaw: spawn.yaw, pitch: -0.025, at: Date.now(), weaponSlot: "primary", weaponName: "CARBINE", weaponCategory: "Rifles", meleeType: "", firing: false, aiming: false, moving: false, crouched: false },
       };
 
       server.serializeAttachment({ playerId });
@@ -271,6 +284,31 @@ export class RoomDurableObject {
     const room = await this.ctx.storage.get("room");
     if (!room) return;
 
+    if (message.type === "team:select" && Number.isInteger(message.team)) {
+      if (room.gameStarted) return;
+      const requestedTeam = Number(message.team);
+      if (requestedTeam < 1 || requestedTeam > 4) return;
+      const player = room.players.find((entry) => entry.id === playerId);
+      if (!player) return;
+      if (player.team === requestedTeam) return;
+
+      const spawn = getSpawnForTeam(room, requestedTeam);
+      if (!spawn) {
+        socket.send(JSON.stringify({ type: "error", error: "Phe này đã đủ 3 người." }));
+        return;
+      }
+
+      player.team = requestedTeam;
+      player.spawnSlot = spawn.spawnSlot;
+      player.spawn = { x: spawn.x, y: spawn.y, z: spawn.z, yaw: spawn.yaw, pitch: -0.025 };
+      player.state = { ...player.spawn, at: Date.now(), weaponSlot: player.state?.weaponSlot || "primary", weaponName: player.state?.weaponName || "CARBINE", weaponCategory: player.state?.weaponCategory || "Rifles", meleeType: player.state?.meleeType || "", firing: false, aiming: false, moving: false, crouched: false };
+      player.ready = false;
+
+      await this.ctx.storage.put("room", room);
+      this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
+      return;
+    }
+
     if (message.type === "ready" && typeof message.ready === "boolean") {
       const player = room.players.find((entry) => entry.id === playerId);
       if (!player) return;
@@ -291,87 +329,63 @@ export class RoomDurableObject {
     if (message.type === "player:hit" && typeof message.victimId === "string") {
       const attacker = room.players.find((entry) => entry.id === playerId);
       const victim = room.players.find((entry) => entry.id === message.victimId);
+
       if (!attacker || !victim) return;
       if (attacker.id === victim.id) return;
       if (attacker.team === victim.team) return;
-      if (victim.alive === false) return;
-      
-      const rawDamage = Number(message.damage);
+      if (attacker.alive === false || victim.alive === false) return;
 
-      if(!Number.isFinite(rawDamage)) return;
-      const damage = Math.max(1, 
-        Math.min(100, Math.round(Number(raw.damage) ))
-      );
-      const killed = victim.health <= 0;
+      const weaponName = String(attacker.state?.weaponName || "CARBINE");
+      const weaponSlot = attacker.state?.weaponSlot || "primary";
+      const damage = Math.max(1, Math.min(100, Number(WEAPON_DAMAGE[weaponName]) || 24));
+
+      // Server is authoritative: the client does NOT decide who the victim is beyond the target ID,
+      // and it cannot inflate damage by sending a larger number.
+      const previousHealth = Number(victim.health ?? 100);
+      victim.health = Math.max(0, previousHealth - damage);
+      const killed = victim.health === 0;
+
       if (killed) {
-        victim.health = 0
         victim.alive = false;
-        room.teamKills ||= {
-           1: 0,
-           2: 0, 
-           3: 0, 
-           4: 0 
-          };
+        room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
         room.teamKills[attacker.team] = (room.teamKills[attacker.team] || 0) + 1;
       }
+
       await this.ctx.storage.put("room", room);
       this.broadcast(room, {
         type: "player:damage",
         attackerId: attacker.id,
         victimId: victim.id,
+        attackerTeam: attacker.team,
+        victimTeam: victim.team,
+        weaponSlot,
+        weaponName,
         damage,
         previousHealth,
         health: victim.health,
         alive: victim.alive,
-        teamKills: room.teamKills || { 
-          1: 0, 
-          2: 0, 
-          3: 0, 
-          4: 0 
-        }
+        teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
       });
+
       if (killed) {
         const victimId = victim.id;
-        // Delayed Respawn Time
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const latest = await this.ctx.storage.get("room");
         const respawning = latest?.players?.find((entry) => entry.id === victimId);
         if (respawning && respawning.alive === false) {
           respawning.health = 100;
           respawning.alive = true;
-          respawning.state = { ...(respawning.spawn || {}), pitch: -0.025, at: Date.now() };
+          respawning.state = { ...(respawning.spawn || {}), at: Date.now(), firing: false, moving: false };
           await this.ctx.storage.put("room", latest);
-          this.broadcast(latest, { type: "player:respawn", 
-            player: { id: victimId, 
-            health: 100,
-            alive: true, 
-            state: respawning.state 
-          }
-        });
-          this.broadcast(latest, { 
-            type: "room:update", 
-            room: this.publicRoom(latest) 
-          });
+          this.broadcast(latest, { type: "player:respawn", player: { id: victimId, health: 100, alive: true, state: respawning.state } });
+          this.broadcast(latest, { type: "room:update", room: this.publicRoom(latest) });
         }
       }
       return;
     }
 
-    if (message.type === "player:kill" && typeof message.victimId === "string") {
-      const killer = room.players.find((entry) => entry.id === playerId);
-      const victim = room.players.find((entry) => entry.id === message.victimId);
-      if (!killer || !victim || killer.id === victim.id || killer.team === victim.team) return;
-      room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
-      room.teamKills[killer.team] = (room.teamKills[killer.team] || 0) + 1;
-      await this.ctx.storage.put("room", room);
-      this.broadcast(room, {
-        type: "score:update",
-        teamKills: room.teamKills,
-        killerId: killer.id,
-        victimId: victim.id,
-      });
-      return;
-    }
+    // Legacy client-side kill messages are intentionally ignored.
+    // Kills are awarded only inside the authoritative player:hit path above.
 
     if (message.type === "player:state" && message.state && typeof message.state === "object") {
       const state = message.state;
