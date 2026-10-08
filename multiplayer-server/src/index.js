@@ -27,6 +27,40 @@ const WEAPON_DAMAGE = {
   Dao: 50, "Búa": 60, Katana: 78, "Chảo": 55,
 };
 
+const BODY_PART_MULTIPLIER = {
+  "ĐẦU": 2.5,
+  "THÂN": 1,
+  "TAY TRÁI": .65,
+  "TAY PHẢI": .65,
+  "CHÂN TRÁI": .7,
+  "CHÂN PHẢI": .7,
+};
+
+const DAMAGE_FALLOFF_START = 8;
+const DAMAGE_FALLOFF_END = 45;
+const DAMAGE_MIN_MULTIPLIER = .25;
+const MAX_MULTIPLAYER_HIT_DISTANCE = 120;
+
+function damageFalloffMultiplier(distance) {
+  const falloff = Math.max(
+    0,
+    Math.min(
+      1,
+      (distance - DAMAGE_FALLOFF_START) /
+        (DAMAGE_FALLOFF_END - DAMAGE_FALLOFF_START)
+    )
+  );
+  return 1 - falloff * (1 - DAMAGE_MIN_MULTIPLIER);
+}
+
+function calculateMultiplayerDamage(baseDamage, bodyPart, distance) {
+  const multiplier = BODY_PART_MULTIPLIER[bodyPart] ?? 1;
+  return Math.max(
+    1,
+    Math.round(baseDamage * multiplier * damageFalloffMultiplier(distance))
+  );
+}
+
 function getSpawnForTeam(room, team) {
   const base = FACTION_BASES.find((entry) => entry.team === team);
   if (!base) return null;
@@ -337,10 +371,27 @@ export class RoomDurableObject {
 
       const weaponName = String(attacker.state?.weaponName || "CARBINE");
       const weaponSlot = attacker.state?.weaponSlot || "primary";
-      const damage = Math.max(1, Math.min(100, Number(WEAPON_DAMAGE[weaponName]) || 24));
+      const bodyPart = BODY_PART_MULTIPLIER[message.bodyPart]
+        ? message.bodyPart
+        : "THÂN";
 
-      // Server is authoritative: the client does NOT decide who the victim is beyond the target ID,
-      // and it cannot inflate damage by sending a larger number.
+      const attackerState = attacker.state || attacker.spawn || {};
+      const victimState = victim.state || victim.spawn || {};
+      const dx = Number(victimState.x) - Number(attackerState.x);
+      const dy = Number(victimState.y) - Number(attackerState.y);
+      const dz = Number(victimState.z) - Number(attackerState.z);
+      const distance = Math.hypot(dx, dy, dz);
+
+      // The client may identify the hit zone, but the server owns the final damage
+      // and distance calculation. Reject impossible long-range hits.
+      if (!Number.isFinite(distance) || distance > MAX_MULTIPLAYER_HIT_DISTANCE) return;
+
+      const baseDamage = Math.max(1, Math.min(100, Number(WEAPON_DAMAGE[weaponName]) || 24));
+      const damage = Math.max(
+        1,
+        Math.min(100, calculateMultiplayerDamage(baseDamage, bodyPart, distance))
+      );
+
       const previousHealth = Number(victim.health ?? 100);
       victim.health = Math.max(0, previousHealth - damage);
       const killed = victim.health === 0;
@@ -356,11 +407,18 @@ export class RoomDurableObject {
         type: "player:damage",
         attackerId: attacker.id,
         attackerNickname: attacker.nickname,
+        attackerPosition: {
+          x: Number(attackerState.x) || 0,
+          y: Number(attackerState.y) || 0,
+          z: Number(attackerState.z) || 0,
+        },
         victimId: victim.id,
         attackerTeam: attacker.team,
         victimTeam: victim.team,
         weaponSlot,
         weaponName,
+        bodyPart,
+        distance,
         damage,
         previousHealth,
         health: victim.health,
