@@ -707,16 +707,16 @@ const weapons = [
 // TODO :Check the actual damage of the Sawed-off and Desert Eagle. 
 ];
 const meleeWeapons = [
-  { name:'Dao', category:'Melee', damage:30, range:1.05, cooldown:.24, cost:0, owned:true, type:'knife' },
-  { name:'Búa', category:'Melee', damage:50, range:1.2, cooldown:.38, cost:300, type:'axe' },
-  { name:'Katana', category:'Melee', damage:60, range:1.45, cooldown:.46, cost:650, type:'katana' },
-  { name:'Chảo', category:'Melee', damage:75, range:1.3, cooldown:.58, cost:450, type:'pan' }
+  { name:'Dao', category:'Melee', damage:50, range:1.05, cooldown:.24, cost:0, owned:true, type:'knife' },
+  { name:'Búa', category:'Melee', damage:60, range:1.2, cooldown:.38, cost:300, type:'axe' },
+  { name:'Katana', category:'Melee', damage:78, range:1.45, cooldown:.46, cost:650, type:'katana' },
+  { name:'Chảo', category:'Melee', damage:55, range:1.3, cooldown:.58, cost:450, type:'pan' }
 ];
 
-let selectedMeleeIndex=0;
-let meleeMode=false;
-let meleeCooldown=0;
-let meleeSwing=0;
+let selectedMeleeIndex= 0;
+let meleeMode= false;
+let meleeCooldown= 0;
+let meleeSwing= 0;
 
 const ownedMeleeWeapons=new Set(['Dao']);
 try {
