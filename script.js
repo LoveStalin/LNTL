@@ -1068,6 +1068,29 @@ function createRemotePlayer(id, nickname, team) {
   helmet.scale.y = .65;
 
   headPivot.add(helmet);
+
+  // The head is otherwise a sphere, so pitch would be visually invisible.
+  // Add a small directional face/visor detail that makes looking up/down obvious.
+  const face = new THREE.Mesh(
+    new THREE.BoxGeometry(.22, .10, .035),
+    new THREE.MeshStandardMaterial({
+      color: '#252b28',
+      roughness: .72,
+      metalness: .08
+    })
+  );
+  face.position.set(0, .19, -.195);
+  face.rotation.x = 0;
+  headPivot.add(face);
+
+  // Small neck keeps the head visibly connected while it pitches.
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(.10, .11, .12, 8),
+    remoteHead
+  );
+  neck.position.set(0, .01, 0);
+  group.add(neck);
+
   group.add(headPivot);
   group.userData.headPivot = headPivot;
 
