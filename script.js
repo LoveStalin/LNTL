@@ -2946,7 +2946,7 @@ for (const [id, remote] of remotePlayers) {
   if (damageFlashTimer === 0) playerHealthPanel.classList.remove('hit');
   multiplayerStateTimer += delta;
   if (
-  multiplayerStateTimer >= 0.033 &&
+  multiplayerStateTimer >= 0.1 && // 10 Hz network snapshots instead of ~30 Hz
   started &&
   !playerDead &&
   window.lntlMultiplayer?.isConnected()
