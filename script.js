@@ -2818,7 +2818,7 @@ function mobileButton(id, onDown, onUp) {
   if (!el) return;
   el.addEventListener('pointerdown', event => {
     event.preventDefault(); event.stopPropagation();
-    if (!started || playerDead || armoryOpen) return;
+    if (!started || playerDead || (armoryOpen && id !== 'mobile-shop')) return;
     el.classList.add('is-active');
     try { el.setPointerCapture(event.pointerId); } catch {}
     onDown?.(event);
@@ -2848,7 +2848,26 @@ if (mobileJoystick) {
   mobileJoystick.addEventListener('pointercancel', endJoystick);
   mobileJoystick.addEventListener('lostpointercapture', endJoystick);
 }
-mobileButton('mobile-fire', () => { shooting = true; shoot(); }, () => { shooting = false; });
+mobileButton('mobile-fire', event => {
+  shooting = true;
+  shoot();
+  mobileLookPointerId = event.pointerId;
+  mobileLookPoint = { x: event.clientX, y: event.clientY };
+}, () => {
+  shooting = false;
+  mobileLookPointerId = null;
+  mobileLookPoint = null;
+});
+document.getElementById('mobile-fire')?.addEventListener('pointermove', event => {
+  if (event.pointerId !== mobileLookPointerId || !mobileLookPoint) return;
+  event.preventDefault();
+  const dx = event.clientX - mobileLookPoint.x;
+  const dy = event.clientY - mobileLookPoint.y;
+  // Dragging the held fire button also moves the camera, so recoil compensation
+  // and vertical tracking can be done without lifting the firing finger.
+  rotateCamera(dx, dy);
+  mobileLookPoint = { x: event.clientX, y: event.clientY };
+});
 mobileButton('mobile-jump', () => { if (grounded) { verticalVelocity = 6.4; grounded = false; } });
 mobileButton('mobile-reload', () => startReload());
 mobileButton('mobile-weapon', () => cycleWeapon(1));
