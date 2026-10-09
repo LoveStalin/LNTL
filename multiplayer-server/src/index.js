@@ -1,6 +1,7 @@
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 6;
 const MAX_PLAYERS = 12;
+const MATCH_KILL_LIMIT = 3;
 
 const MAX_TEAM_SIZE = 3;
 // Three.js uses forward = (-sin(yaw), 0, -cos(yaw)).
@@ -261,6 +262,9 @@ export class RoomDurableObject {
         createdAt: Date.now(),
         players: [],
         teamKills: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        gameStarted: false,
+        gameEnded: false,
+        winnerTeam: null,
       };
       await this.persistRoom(room);
       return json({ ok: true }, 201);
@@ -273,6 +277,8 @@ export class RoomDurableObject {
 
       const room = await this.getRoom();
       if (!room) return json({ error: "Room not found. Check the code." }, 404);
+      if (room.gameEnded) return json({ error: "Trận đấu này đã kết thúc. Hãy tạo hoặc tham gia phòng mới." }, 410);
+      if (room.gameStarted) return json({ error: "Trận đấu đang diễn ra. Hãy chờ trận kết thúc rồi tạo phòng mới." }, 409);
 
       const nickname = (url.searchParams.get("nickname") ?? "").trim().replace(/\s+/g, " ").slice(0, 20);
       if (!nickname) return json({ error: "Enter a nickname." }, 400);
@@ -339,6 +345,9 @@ export class RoomDurableObject {
       maxPlayers: MAX_PLAYERS,
       players: room.players.map(({ id, nickname, team, ready, state, health, alive }) => ({ id, nickname, team, ready, state, health: health ?? 100, alive: alive ?? true })),
       teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
+      gameStarted: Boolean(room.gameStarted),
+      gameEnded: Boolean(room.gameEnded),
+      winnerTeam: room.winnerTeam ?? null,
       hostId: room.players[0]?.id ?? null,
     };
   }
@@ -369,6 +378,8 @@ export class RoomDurableObject {
 
     const room = await this.getRoom();
     if (!room) return;
+
+    if (room.gameEnded) return;
 
     if (message.type === "team:select" && Number.isInteger(message.team)) {
       if (room.gameStarted) return;
@@ -416,6 +427,7 @@ export class RoomDurableObject {
       const attacker = room.players.find((entry) => entry.id === playerId);
       const victim = room.players.find((entry) => entry.id === message.victimId);
 
+      if (room.gameEnded || !room.gameStarted) return;
       if (!attacker || !victim) return;
       if (attacker.id === victim.id) return;
       if (attacker.team === victim.team) return;
@@ -452,6 +464,10 @@ export class RoomDurableObject {
         victim.alive = false;
         room.teamKills ||= { 1: 0, 2: 0, 3: 0, 4: 0 };
         room.teamKills[attacker.team] = (room.teamKills[attacker.team] || 0) + 1;
+        if (room.teamKills[attacker.team] >= MATCH_KILL_LIMIT) {
+          room.gameEnded = true;
+          room.winnerTeam = attacker.team;
+        }
       }
 
       await this.persistRoom(room);
@@ -477,6 +493,25 @@ export class RoomDurableObject {
         alive: victim.alive,
         teamKills: room.teamKills || { 1: 0, 2: 0, 3: 0, 4: 0 },
       });
+
+      if (room.gameEnded) {
+        this.broadcast(room, {
+          type: "game:end",
+          winnerTeam: room.winnerTeam,
+          killLimit: MATCH_KILL_LIMIT,
+          teamKills: room.teamKills,
+          message: `PHE ${room.winnerTeam} CHIẾN THẮNG`,
+        });
+        // Let the clients play the result animation, then close every socket and
+        // remove the finished room so nobody keeps sending gameplay snapshots.
+        await new Promise((resolve) => setTimeout(resolve, 6500));
+        for (const activeSocket of this.ctx.getWebSockets()) {
+          try { activeSocket.close(1000, "Match ended"); } catch {}
+        }
+        this.roomCache = null;
+        await this.ctx.storage.delete("room");
+        return;
+      }
 
       if (killed) {
         const victimId = victim.id;
@@ -508,6 +543,8 @@ export class RoomDurableObject {
 
     // Legacy client-side kill messages are intentionally ignored.
     // Kills are awarded only inside the authoritative player:hit path above.
+
+    if (room.gameEnded || !room.gameStarted) return;
 
     if (message.type === "player:state" && message.state && typeof message.state === "object") {
       const state = message.state;
