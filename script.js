@@ -2644,6 +2644,19 @@ document.querySelector('#enter').addEventListener('click', () => {
 window.addEventListener('lntl:game-start', () => {
   startPatrol();
 });
+
+window.addEventListener('lntl:match-cleanup', () => {
+  started = false;
+  shooting = false;
+  dragging = false;
+  aiming = false;
+  keys.clear();
+  if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+  intro.classList.remove('hidden');
+  canvas.style.cursor = 'default';
+  updateAimUI();
+});
+
 addEventListener('keydown', (event) => {
   if (event.code === 'KeyW' && event.ctrlKey) event.preventDefault();
   if (event.code === 'KeyB' && started && !event.repeat) {
