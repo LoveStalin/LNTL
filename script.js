@@ -1701,6 +1701,18 @@ function hideDeathScreen() {
   if (deathOverlay) deathOverlay.hidden = true;
 }
 
+// A match ending takes priority over an individual player's death/respawn UI.
+// The final victim must not remain on the 0.0-second death screen when respawn is cancelled.
+window.addEventListener('lntl:game-end', () => {
+  hideDeathScreen();
+  shooting = false;
+  aiming = false;
+  dragging = false;
+  keys.clear();
+  playerHealth = Math.max(1, playerHealth);
+  updateCombatUI();
+});
+
 window.addEventListener('lntl:player-damage', (event) => {
   const {
     victimId,
