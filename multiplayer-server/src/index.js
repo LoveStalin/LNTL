@@ -278,6 +278,7 @@ export class RoomDurableObject {
       const room = await this.getRoom();
       if (!room) return json({ error: "Room not found. Check the code." }, 404);
       if (room.gameEnded) return json({ error: "Trận đấu này đã kết thúc. Hãy tạo hoặc tham gia phòng mới." }, 410);
+      if (room.gameStarted) return json({ error: "Trận đấu đang diễn ra. Hãy chờ trận kết thúc rồi tạo phòng mới." }, 409);
 
       const nickname = (url.searchParams.get("nickname") ?? "").trim().replace(/\s+/g, " ").slice(0, 20);
       if (!nickname) return json({ error: "Enter a nickname." }, 400);
