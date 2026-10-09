@@ -165,6 +165,10 @@ function connect(code, nickname) {
       } else if (message.type === "game:start") {
         setStatus("Tất cả đã sẵn sàng. Đang vào trận!");
         window.dispatchEvent(new CustomEvent("lntl:game-start", { detail: message }));
+      } else if (message.type === "game:end") {
+        updateScoreboard(message.teamKills || {});
+        showMatchResult(message);
+        window.dispatchEvent(new CustomEvent("lntl:game-end", { detail: message }));
       } else if (message.type === "player:state") {
         window.dispatchEvent(new CustomEvent("lntl:remote-state", { detail: message }));
       } else if (message.type === "player:left") {
@@ -182,6 +186,31 @@ function connect(code, nickname) {
       }
     });
   });
+}
+let matchResultTimer = null;
+function showMatchResult(message) {
+  const overlay = $("#match-result");
+  const title = $("#match-result-title");
+  const score = $("#match-result-score");
+  const kicker = $("#match-result-kicker");
+  if (!overlay) return;
+  if (matchResultTimer) clearTimeout(matchResultTimer);
+  const team = Number(message.winnerTeam) || 0;
+  if (title) title.textContent = team ? "PHE " + team + " CHIẾN THẮNG" : "TRẬN ĐẤU KẾT THÚC";
+  if (score) score.textContent = Object.entries(message.teamKills || {})
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([id, kills]) => "PHE " + id + "  " + kills + " / " + (message.killLimit || 15))
+    .join("   ·   ");
+  if (kicker) kicker.textContent = "ĐỐI KHÁNG  /  KẾT QUẢ TRẬN ĐẤU";
+  overlay.hidden = false;
+  requestAnimationFrame(() => overlay.classList.add("is-visible"));
+  setStatus("Phe " + team + " chiến thắng! Phòng sẽ đóng sau ít giây.");
+  matchResultTimer = setTimeout(() => {
+    overlay.classList.remove("is-visible");
+    disconnect();
+    window.dispatchEvent(new CustomEvent("lntl:match-cleanup"));
+    setTimeout(() => { overlay.hidden = true; }, 650);
+  }, 5200);
 }
 function updateRoomInfo() {
   const players = activeRoom?.players || [];
