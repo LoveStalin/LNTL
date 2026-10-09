@@ -328,7 +328,7 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
 .mobile-aim { position:absolute; right:1.5%; top:36%; }
 .mobile-jump { position:absolute; right:3.5%; top:62%; }
 .mobile-crouch { position:absolute; right:12.5%; bottom:1.5%; }
-.mobile-lean { position:absolute; top:46%; min-width:clamp(48px,8vw,68px); min-height:clamp(48px,8vw,68px); font-size:clamp(18px,3vw,26px); }
+.mobile-lean { position:absolute; top:46%; }
 #mobile-lean-left { left:18%; }
 #mobile-lean-right { left:28%; }
 @media (pointer:coarse) and (orientation:landscape) {
