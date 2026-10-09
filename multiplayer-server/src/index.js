@@ -223,7 +223,7 @@ export class RoomDurableObject {
   async getRoom() {
     if (this.roomCache) return this.roomCache;
 
-    const room = await this.getRoom();
+    const room = await this.ctx.storage.get("room");
     if (!room) return null;
 
     // Hibernation may recreate this object. Restore the latest transient
@@ -240,7 +240,7 @@ export class RoomDurableObject {
 
   async persistRoom(room) {
     this.roomCache = room;
-    await this.persistRoom(room);
+    await this.ctx.storage.put("room", room);
   }
 
   async fetch(request) {
