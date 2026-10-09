@@ -2867,24 +2867,7 @@ mobileButton('mobile-aim', () => {
   aiming = !aiming; updateAimUI();
   document.querySelector('#mobile-aim')?.setAttribute('aria-pressed', String(aiming));
 });
-// Touching the open right-hand canvas area rotates the camera; action buttons stay independent.
-canvas.addEventListener('pointerdown', event => {
-  if (event.pointerType === 'mouse' || !started || playerDead || armoryOpen) return;
-  mobileLookPointerId = event.pointerId;
-  mobileLookPoint = { x: event.clientX, y: event.clientY };
-}, { passive: true });
-canvas.addEventListener('pointermove', event => {
-  if (event.pointerType === 'mouse' || event.pointerId !== mobileLookPointerId || !mobileLookPoint || !started || playerDead || armoryOpen) return;
-  const dx = event.clientX - mobileLookPoint.x;
-  const dy = event.clientY - mobileLookPoint.y;
-  rotateCamera(dx, dy);
-  mobileLookPoint = { x: event.clientX, y: event.clientY };
-}, { passive: true });
-const clearMobileLook = event => {
-  if (event.pointerId === mobileLookPointerId) { mobileLookPointerId = null; mobileLookPoint = null; }
-};
-canvas.addEventListener('pointerup', clearMobileLook);
-canvas.addEventListener('pointercancel', clearMobileLook);
+// Existing canvas pointer handlers already rotate the camera on touch drag.
 window.addEventListener('blur', () => {
   resetMobileJoystick();
   for (const code of [...mobileKeyCodes]) mobileKey(code, false);
