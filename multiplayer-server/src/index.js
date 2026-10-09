@@ -1,7 +1,7 @@
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_LENGTH = 6;
 const MAX_PLAYERS = 12;
-const MATCH_KILL_LIMIT = 15;
+const MATCH_KILL_LIMIT = 3;
 
 const MAX_TEAM_SIZE = 3;
 // Three.js uses forward = (-sin(yaw), 0, -cos(yaw)).
