@@ -2777,6 +2777,120 @@ document.addEventListener('pointerlockerror', () => {
 document.addEventListener('mousemove', (event) => {
   if (document.pointerLockElement === canvas) rotateCamera(event.movementX, event.movementY);
 });
+// Mobile touch input: virtual joystick + independent look/fire/action controls.
+const mobileHud = document.querySelector('#mobile-hud');
+const mobileJoystick = document.querySelector('#mobile-joystick');
+const mobileStick = document.querySelector('#mobile-stick');
+const mobilePointers = new Map();
+let joystickPointerId = null;
+let joystickX = 0;
+let joystickY = 0;
+let mobileLookPointerId = null;
+let mobileLookPoint = null;
+const mobileKeyCodes = new Set();
+function mobileKey(code, down) {
+  if (down) { keys.add(code); mobileKeyCodes.add(code); }
+  else { keys.delete(code); mobileKeyCodes.delete(code); }
+}
+function resetMobileJoystick() {
+  joystickPointerId = null; joystickX = 0; joystickY = 0;
+  mobileKey('KeyW', false); mobileKey('KeyS', false);
+  mobileKey('KeyA', false); mobileKey('KeyD', false);
+  if (mobileStick) mobileStick.style.transform = 'translate(-50%,-50%)';
+}
+function updateMobileJoystick(event) {
+  const rect = mobileJoystick.getBoundingClientRect();
+  const radius = rect.width * .34;
+  const dx = event.clientX - (rect.left + rect.width / 2);
+  const dy = event.clientY - (rect.top + rect.height / 2);
+  const length = Math.hypot(dx, dy) || 1;
+  const scale = Math.min(1, radius / length);
+  const x = dx * scale, y = dy * scale;
+  joystickX = x / radius; joystickY = y / radius;
+  mobileStick.style.transform = `translate(calc(-50% + ${x}px),calc(-50% + ${y}px))`;
+  mobileKey('KeyW', joystickY < -.22);
+  mobileKey('KeyS', joystickY > .22);
+  mobileKey('KeyA', joystickX < -.22);
+  mobileKey('KeyD', joystickX > .22);
+}
+function mobileButton(id, onDown, onUp) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('pointerdown', event => {
+    event.preventDefault(); event.stopPropagation();
+    if (!started || playerDead || armoryOpen) return;
+    el.classList.add('is-active');
+    try { el.setPointerCapture(event.pointerId); } catch {}
+    onDown?.(event);
+  });
+  const end = event => {
+    el.classList.remove('is-active');
+    onUp?.(event);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
+}
+if (mobileJoystick) {
+  mobileJoystick.addEventListener('pointerdown', event => {
+    if (!started || playerDead || armoryOpen || joystickPointerId !== null) return;
+    event.preventDefault(); event.stopPropagation();
+    joystickPointerId = event.pointerId;
+    try { mobileJoystick.setPointerCapture(event.pointerId); } catch {}
+    updateMobileJoystick(event);
+  });
+  mobileJoystick.addEventListener('pointermove', event => {
+    if (event.pointerId !== joystickPointerId) return;
+    event.preventDefault(); updateMobileJoystick(event);
+  });
+  const endJoystick = event => { if (event.pointerId === joystickPointerId) resetMobileJoystick(); };
+  mobileJoystick.addEventListener('pointerup', endJoystick);
+  mobileJoystick.addEventListener('pointercancel', endJoystick);
+  mobileJoystick.addEventListener('lostpointercapture', endJoystick);
+}
+mobileButton('mobile-fire', () => { shooting = true; shoot(); }, () => { shooting = false; });
+mobileButton('mobile-jump', () => { if (grounded) { verticalVelocity = 6.4; grounded = false; } });
+mobileButton('mobile-reload', () => startReload());
+mobileButton('mobile-weapon', () => cycleWeapon(1));
+mobileButton('mobile-shop', () => {
+  if (!armoryOpen && !isInSafeZone()) { showSafeZoneNotice(); return; }
+  openArmory(!armoryOpen);
+});
+mobileButton('mobile-run', () => mobileKey('ShiftLeft', true), () => mobileKey('ShiftLeft', false));
+mobileButton('mobile-lean-left', () => mobileKey('KeyQ', true), () => mobileKey('KeyQ', false));
+mobileButton('mobile-lean-right', () => mobileKey('KeyE', true), () => mobileKey('KeyE', false));
+mobileButton('mobile-crouch', () => {
+  toggleCrouch();
+  document.querySelector('#mobile-crouch')?.setAttribute('aria-pressed', String(document.querySelector('#crouch-toggle')?.getAttribute('aria-pressed') === 'true'));
+});
+mobileButton('mobile-aim', () => {
+  aiming = !aiming; updateAimUI();
+  document.querySelector('#mobile-aim')?.setAttribute('aria-pressed', String(aiming));
+});
+// Touching the open right-hand canvas area rotates the camera; action buttons stay independent.
+canvas.addEventListener('pointerdown', event => {
+  if (event.pointerType === 'mouse' || !started || playerDead || armoryOpen) return;
+  mobileLookPointerId = event.pointerId;
+  mobileLookPoint = { x: event.clientX, y: event.clientY };
+}, { passive: true });
+canvas.addEventListener('pointermove', event => {
+  if (event.pointerType === 'mouse' || event.pointerId !== mobileLookPointerId || !mobileLookPoint || !started || playerDead || armoryOpen) return;
+  const dx = event.clientX - mobileLookPoint.x;
+  const dy = event.clientY - mobileLookPoint.y;
+  rotateCamera(dx, dy);
+  mobileLookPoint = { x: event.clientX, y: event.clientY };
+}, { passive: true });
+const clearMobileLook = event => {
+  if (event.pointerId === mobileLookPointerId) { mobileLookPointerId = null; mobileLookPoint = null; }
+};
+canvas.addEventListener('pointerup', clearMobileLook);
+canvas.addEventListener('pointercancel', clearMobileLook);
+window.addEventListener('blur', () => {
+  resetMobileJoystick();
+  for (const code of [...mobileKeyCodes]) mobileKey(code, false);
+  shooting = false;
+});
+
 canvas.style.cursor = 'default';
 
 const clock = new THREE.Clock();
