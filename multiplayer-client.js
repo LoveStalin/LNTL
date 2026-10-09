@@ -48,6 +48,8 @@ let socket = null;
 let myPlayerId = null;
 let activeRoom = null;
 let connected = false;
+let lastSentState = null;
+let lastStateSentAt = 0;
 
 nicknameInput.value = localStorage.getItem("lntl-mp-nickname") || "";
 function updateEnterButton() {
@@ -257,30 +259,54 @@ window.addEventListener('lntl:player-hit', (event) => {
 window.addEventListener("lntl:send-state", (event) => {
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN) return;
   const state = event.detail || {};
+  const nextState = {
+    x: Number(state.x) || 0,
+    y: Number(state.y) || 0,
+    z: Number(state.z) || 0,
+    yaw: Number(state.yaw) || 0,
+    pitch: Number(state.pitch) || 0,
+    lean: Number(state.lean) || 0,
+    weaponSlot: state.weaponSlot || "primary",
+    weaponName: state.weaponName || "",
+    weaponCategory: state.weaponCategory || "",
+    meleeType: state.meleeType || "",
+    firing: Boolean(state.firing),
+    aiming: Boolean(state.aiming),
+    moving: Boolean(state.moving),
+    crouched: Boolean(state.crouched),
+  };
 
+  const now = performance.now();
+  const previous = lastSentState;
+  const moved = !previous || Math.hypot(
+    nextState.x - previous.x,
+    nextState.y - previous.y,
+    nextState.z - previous.z
+  ) >= 0.04;
+  const looked = !previous ||
+    Math.abs(nextState.yaw - previous.yaw) >= 0.025 ||
+    Math.abs(nextState.pitch - previous.pitch) >= 0.025 ||
+    Math.abs(nextState.lean - previous.lean) >= 0.025;
+  const actionChanged = !previous ||
+    nextState.weaponSlot !== previous.weaponSlot ||
+    nextState.weaponName !== previous.weaponName ||
+    nextState.weaponCategory !== previous.weaponCategory ||
+    nextState.meleeType !== previous.meleeType ||
+    nextState.firing !== previous.firing ||
+    nextState.aiming !== previous.aiming ||
+    nextState.moving !== previous.moving ||
+    nextState.crouched !== previous.crouched;
+  const heartbeatDue = now - lastStateSentAt >= 500;
+
+  // Skip duplicate idle snapshots, but send meaningful changes immediately.
+  // The 500 ms heartbeat lets peers recover from a dropped state packet.
+  if (!moved && !looked && !actionChanged && !heartbeatDue) return;
+
+  lastSentState = nextState;
+  lastStateSentAt = now;
   socket.send(JSON.stringify({
     type: "player:state",
-    state: {
-      x: Number(state.x) || 0,
-      y: Number(state.y) || 0,
-      z: Number(state.z) || 0,
-
-      yaw: Number(state.yaw) || 0,
-      pitch: Number(state.pitch) || 0,
-      lean: Number(state.lean) || 0,
-
-      // Multiplayer-specific-state
-      weaponSlot: state.weaponSlot || "primary",
-      weaponName: state.weaponName || "",
-      weaponCategory: state.weaponCategory || "",
-      meleeType: state.meleeType || "",
-      firing: Boolean(state.firing),
-      aiming: Boolean(state.aiming),
-      moving: Boolean(state.moving),
-      crouched: Boolean(state.crouched),
-
-      clientAt: performance.now(),
-      }
+    state: { ...nextState, clientAt: now }
   }));
 });
 window.lntlMultiplayer = { isConnected: () => connected, getPlayerId: () => myPlayerId };
