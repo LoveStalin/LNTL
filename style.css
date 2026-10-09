@@ -323,14 +323,14 @@ kbd { min-width: 20px; height: 20px; display: inline-grid; place-items: center; 
 .mobile-run { position:absolute; left:clamp(118px,25vw,178px); bottom:12px; min-width:48px; min-height:48px; }
 .mobile-top-actions { position:absolute; top:max(12px,env(safe-area-inset-top)); right:max(16px,env(safe-area-inset-right)); display:flex; gap:8px; }
 .mobile-top-actions .mobile-btn { min-width:48px; min-height:42px; border-radius:8px; }
-.mobile-right-actions { position:absolute; right:max(16px,env(safe-area-inset-right)); bottom:max(14px,env(safe-area-inset-bottom)); width:min(44vw,310px); height:min(43vh,270px); }
-.mobile-fire { position:absolute; right:0; bottom:30px; width:clamp(72px,13vh,104px); height:clamp(72px,13vh,104px); border:2px solid rgba(255,113,98,.8); background:rgba(112,30,27,.55); font-size:clamp(11px,2vh,15px); }
-.mobile-aim { position:absolute; right:clamp(78px,14vh,112px); bottom:35px; }
-.mobile-jump { position:absolute; right:clamp(5px,1vw,15px); bottom:clamp(120px,22vh,155px); }
-.mobile-crouch { position:absolute; right:clamp(80px,14vh,112px); bottom:clamp(112px,20vh,145px); }
-.mobile-lean { position:absolute; bottom:0; min-width:38px; min-height:38px; }
-#mobile-lean-left { right:clamp(180px,30vh,225px); }
-#mobile-lean-right { right:clamp(135px,23vh,172px); }
+.mobile-right-actions { position:absolute; inset:0; width:auto; height:auto; }
+.mobile-fire { position:absolute; right:7%; bottom:9%; width:clamp(72px,13vh,104px); height:clamp(72px,13vh,104px); border:2px solid rgba(255,113,98,.8); background:rgba(112,30,27,.55); font-size:clamp(11px,2vh,15px); z-index:2; }
+.mobile-aim { position:absolute; right:1.5%; top:36%; }
+.mobile-jump { position:absolute; right:3.5%; top:62%; }
+.mobile-crouch { position:absolute; right:12.5%; bottom:1.5%; }
+.mobile-lean { position:absolute; bottom:1.5%; min-width:38px; min-height:38px; }
+#mobile-lean-left { right:24%; }
+#mobile-lean-right { right:18%; }
 @media (pointer:coarse) and (orientation:landscape) {
   .mobile-hud { display:block; }
   .topbar { height:42px; padding:0 14px; }
