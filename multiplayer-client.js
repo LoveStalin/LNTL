@@ -111,6 +111,8 @@ function setStatus(message, error = false) {
 }
 function connect(code, nickname) {
   disconnect();
+  lastSentState = null;
+  lastStateSentAt = 0;
   return new Promise((resolve, reject) => {
     const url = new URL(BACKEND_URL + "/api/rooms/" + code + "/ws");
     url.protocol = "wss:";
@@ -195,6 +197,8 @@ function updateRoomInfo() {
 function disconnect() {
   if (socket) { const old = socket; socket = null; old.close(1000, "Leave room"); }
   connected = false; activeRoom = null; myPlayerId = null;
+  lastSentState = null;
+  lastStateSentAt = 0;
   if (teamsPanel) teamsPanel.hidden = true;
   window.dispatchEvent(new CustomEvent("lntl:multiplayer", { detail: { connected: false } }));
 }
