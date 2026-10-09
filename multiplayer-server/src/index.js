@@ -215,6 +215,32 @@ export class RoomDurableObject {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
+    // Keep hot room state in memory; SQLite is for durable room/game events,
+    // not high-frequency movement snapshots.
+    this.roomCache = null;
+  }
+
+  async getRoom() {
+    if (this.roomCache) return this.roomCache;
+
+    const room = await this.getRoom();
+    if (!room) return null;
+
+    // Hibernation may recreate this object. Restore the latest transient
+    // movement state from each live WebSocket's attachment without a DB write.
+    for (const socket of this.ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment();
+      const player = room.players.find((entry) => entry.id === attachment?.playerId);
+      if (player && attachment?.state) player.state = attachment.state;
+    }
+
+    this.roomCache = room;
+    return room;
+  }
+
+  async persistRoom(room) {
+    this.roomCache = room;
+    await this.persistRoom(room);
   }
 
   async fetch(request) {
@@ -225,7 +251,10 @@ export class RoomDurableObject {
       if (!validRoomCode(code)) return json({ error: "Invalid room code." }, 400);
 
       const existing = await this.ctx.storage.get("room");
-      if (existing) return json({ error: "Room already exists." }, 409);
+      if (existing) {
+        this.roomCache = existing;
+        return json({ error: "Room already exists." }, 409);
+      }
 
       const room = {
         code,
@@ -233,7 +262,7 @@ export class RoomDurableObject {
         players: [],
         teamKills: { 1: 0, 2: 0, 3: 0, 4: 0 },
       };
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       return json({ ok: true }, 201);
     }
 
@@ -242,7 +271,7 @@ export class RoomDurableObject {
         return json({ error: "WebSocket upgrade required." }, 426);
       }
 
-      const room = await this.ctx.storage.get("room");
+      const room = await this.getRoom();
       if (!room) return json({ error: "Room not found. Check the code." }, 404);
 
       const nickname = (url.searchParams.get("nickname") ?? "").trim().replace(/\s+/g, " ").slice(0, 20);
@@ -289,7 +318,7 @@ export class RoomDurableObject {
       this.ctx.acceptWebSocket(server);
 
       room.players.push(player);
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       server.send(JSON.stringify({
         type: "welcome",
         playerId,
@@ -338,7 +367,7 @@ export class RoomDurableObject {
     const playerId = attachment?.playerId;
     if (!playerId) return;
 
-    const room = await this.ctx.storage.get("room");
+    const room = await this.getRoom();
     if (!room) return;
 
     if (message.type === "team:select" && Number.isInteger(message.team)) {
@@ -361,7 +390,7 @@ export class RoomDurableObject {
       player.state = { ...player.spawn, at: Date.now(), weaponSlot: player.state?.weaponSlot || "primary", weaponName: player.state?.weaponName || "CARBINE", weaponCategory: player.state?.weaponCategory || "Rifles", meleeType: player.state?.meleeType || "", firing: false, aiming: false, moving: false, crouched: false };
       player.ready = false;
 
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
       return;
     }
@@ -371,13 +400,13 @@ export class RoomDurableObject {
       if (!player) return;
       player.ready = message.ready;
       if (!message.ready) room.gameStarted = false;
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
 
       const allReady = room.players.length >= 2 && room.players.every((entry) => entry.ready);
       if (allReady && !room.gameStarted) {
         room.gameStarted = true;
-        await this.ctx.storage.put("room", room);
+        await this.persistRoom(room);
         this.broadcast(room, { type: "game:start", room: this.publicRoom(room), at: Date.now() });
       }
       return;
@@ -425,7 +454,7 @@ export class RoomDurableObject {
         room.teamKills[attacker.team] = (room.teamKills[attacker.team] || 0) + 1;
       }
 
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       this.broadcast(room, {
         type: "player:damage",
         attackerId: attacker.id,
@@ -452,7 +481,7 @@ export class RoomDurableObject {
       if (killed) {
         const victimId = victim.id;
         await new Promise((resolve) => setTimeout(resolve, 3000));
-        const latest = await this.ctx.storage.get("room");
+        const latest = await this.getRoom();
         const respawning = latest?.players?.find((entry) => entry.id === victimId);
         if (respawning && respawning.alive === false) {
           respawning.health = 100;
@@ -469,7 +498,7 @@ export class RoomDurableObject {
             moving: false,
             crouched: false
           };
-          await this.ctx.storage.put("room", latest);
+          await this.persistRoom(latest);
           this.broadcast(latest, { type: "player:respawn", player: { id: victimId, health: 100, alive: true, state: respawning.state } });
           this.broadcast(latest, { type: "room:update", room: this.publicRoom(latest) });
         }
@@ -503,7 +532,7 @@ export class RoomDurableObject {
       );
       if (!player) return;
       // player.state = { x, y, z, yaw, pitch, at: Date.now() };
-      // await this.ctx.storage.put("room", room);
+      // await this.persistRoom(room);
       // this.broadcast(room, {
       // type: "player:state",
        // playerId,
@@ -556,16 +585,18 @@ export class RoomDurableObject {
       at: serverAt
      };
 
-     await this.ctx.storage.put("room", room);
+     // Transient movement/aim/weapon state is not written to SQLite.
+     // Store it on the WebSocket attachment so it survives DO hibernation,
+     // then broadcast it to peers over the existing connection.
+     socket.serializeAttachment({ ...attachment, state: player.state });
 
      this.broadcast(room, {
       type: "player:state",
-
       playerId: player.id,
       nickname: player.nickname,
       team: player.team,
       state: player.state,
-      });
+     });
       return;
     }
 
@@ -594,13 +625,13 @@ export class RoomDurableObject {
     const playerId = attachment?.playerId;
     if (!playerId) return;
 
-    const room = await this.ctx.storage.get("room");
+    const room = await this.getRoom();
     if (!room) return;
 
     const before = room.players.length;
     room.players = room.players.filter((player) => player.id !== playerId);
     if (room.players.length !== before) {
-      await this.ctx.storage.put("room", room);
+      await this.persistRoom(room);
       this.broadcast(room, { type: "player:left", playerId });
       this.broadcast(room, { type: "room:update", room: this.publicRoom(room) });
     }
